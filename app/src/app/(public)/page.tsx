@@ -112,7 +112,7 @@ export default async function LandingPage() {
               </div>
 
               {/* Headline */}
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-tight mb-6">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold leading-[1.15] tracking-tight mb-5">
                 Kelola Kargo.<br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">
                   Cetak Invoice.
