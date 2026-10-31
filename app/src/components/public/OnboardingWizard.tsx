@@ -743,29 +743,41 @@ export function OnboardingWizard({ initialPlan = "trial" }: OnboardingWizardProp
                       </div>
                     )}
 
-                    <div className="pt-2">
-                      <button
-                        type="button"
-                        disabled={isSimulatingPayment}
-                        onClick={handleSimulateBorderPayWebhook}
-                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 transition-colors shadow-sm"
-                      >
-                        {isSimulatingPayment ? (
-                          <>
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            <span>Memverifikasi Callback BorderPay...</span>
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle2 className="h-4 w-4 text-emerald-700" />
-                            <span>Simulasikan Pembayaran QRIS Sukses</span>
-                          </>
-                        )}
-                      </button>
-                      <span className="text-[10px] text-slate-400 block mt-1.5">
-                        (Memicu webhook /api/webhooks/borderpay secara instan)
-                      </span>
-                    </div>
+                    {registrationResult.paymentDetails?.isLiveMode ? (
+                      <div className="pt-2 p-3.5 bg-blue-50/80 rounded-xl border border-blue-200 text-center">
+                        <p className="text-xs font-bold text-blue-900 flex items-center justify-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span>QRIS Resmi Bank Indonesia (Mode Live)</span>
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                          Buka m-Banking (BCA, Mandiri, BRI, BNI) atau e-Wallet (GoPay, OVO, Dana, ShopeePay) lalu scan barcode QRIS di atas. Pembayaran terverifikasi secara instan.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          disabled={isSimulatingPayment}
+                          onClick={handleSimulateBorderPayWebhook}
+                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 transition-colors shadow-sm"
+                        >
+                          {isSimulatingPayment ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              <span>Memverifikasi Callback BorderPay...</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="h-4 w-4 text-emerald-700" />
+                              <span>Simulasikan Pembayaran QRIS Sukses (Sandbox)</span>
+                            </>
+                          )}
+                        </button>
+                        <span className="text-[10px] text-slate-400 block mt-1.5">
+                          (Mode Sandbox Test: Memverifikasi otomatis ke BorderPay)
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

@@ -53,6 +53,7 @@ export interface RegisterTenantResult {
     referenceId: string;
     qrisString: string;
     paymentUrl?: string;
+    isLiveMode?: boolean;
     expiresAt: string;
   };
   error?: string;
@@ -332,6 +333,7 @@ export async function registerNewTenant(
           referenceId: qrisResult.referenceId || referenceId,
           qrisString: qrisResult.qrisString || "",
           paymentUrl: qrisResult.paymentUrl,
+          isLiveMode: Boolean(process.env.BORDERPAY_API_KEY_LIVE),
           expiresAt: qrisResult.expiresAt || new Date(Date.now() + 30 * 60 * 1000).toISOString(),
         },
       };
