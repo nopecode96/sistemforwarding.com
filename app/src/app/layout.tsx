@@ -41,22 +41,21 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased scroll-smooth`}
     >
       <head>
-        {/* Google Analytics 4 (GA4) */}
-        <Script
+        {/* Google Analytics 4 (gtag.js) */}
+        <script
+          async
           src="https://www.googletagmanager.com/gtag/js?id=G-Z26WCCGZGV"
-          strategy="afterInteractive"
         />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-
-            gtag('config', 'G-Z26WCCGZGV', {
-              page_path: window.location.pathname,
-            });
-          `}
-        </Script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-Z26WCCGZGV');
+            `,
+          }}
+        />
 
         <script
           dangerouslySetInnerHTML={{
