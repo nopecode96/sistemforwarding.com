@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { ScrollToTop } from "@/components/public/ScrollToTop";
 import { GooglePopupCallback } from "@/components/public/GooglePopupCallback";
@@ -40,6 +41,23 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased scroll-smooth`}
     >
       <head>
+        {/* Google Analytics 4 (GA4) */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-Z26WCCGZGV"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-Z26WCCGZGV', {
+              page_path: window.location.pathname,
+            });
+          `}
+        </Script>
+
         <script
           dangerouslySetInnerHTML={{
             __html: `
