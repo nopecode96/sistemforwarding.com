@@ -22,122 +22,6 @@ export const metadata: Metadata = {
   },
 };
 
-// ─── SVG Dashboard Mockup ─────────────────────────────────────────────────────
-function DashboardMockup() {
-  return (
-    <svg
-      viewBox="0 0 900 560"
-      xmlns="http://www.w3.org/2000/svg"
-      className="w-full h-full"
-      role="img"
-      aria-label="Tampilan dasbor Sistem Forwarding"
-    >
-      {/* Browser chrome */}
-      <rect width="900" height="560" rx="16" fill="#1e2030" />
-      <rect width="900" height="42" rx="16" fill="#272a3d" />
-      <rect y="28" width="900" height="14" fill="#272a3d" />
-      <circle cx="22" cy="21" r="6" fill="#ff5f57" />
-      <circle cx="42" cy="21" r="6" fill="#febc2e" />
-      <circle cx="62" cy="21" r="6" fill="#28c840" />
-      <rect x="140" y="12" width="240" height="18" rx="9" fill="#1a1d2e" />
-
-      {/* Sidebar */}
-      <rect x="0" y="42" width="160" height="518" rx="0" fill="#151728" />
-      <rect x="12" y="62" width="136" height="36" rx="8" fill="#2563eb" />
-      <rect x="20" y="74" width="80" height="12" rx="6" fill="#ffffff" fillOpacity="0.9" />
-      {[110, 156, 202, 248, 294].map((y, i) => (
-        <g key={i}>
-          <rect x="20" y={y} width="14" height="14" rx="3" fill="#3b82f6" fillOpacity={i === 0 ? 1 : 0.35} />
-          <rect x="42" y={y + 1} width={[72, 60, 80, 52, 64][i]} height="10" rx="5" fill="#94a3b8" fillOpacity={i === 0 ? 0.9 : 0.45} />
-        </g>
-      ))}
-
-      {/* Main area */}
-      <rect x="160" y="42" width="740" height="518" fill="#0f1120" />
-
-      {/* Top bar */}
-      <rect x="160" y="42" width="740" height="44" fill="#151728" />
-      <rect x="176" y="54" width="140" height="18" rx="9" fill="#1e2235" />
-      <rect x="750" y="54" width="60" height="18" rx="9" fill="#2563eb" />
-      <circle cx="840" cy="63" r="14" fill="#1e2235" />
-      <circle cx="840" cy="60" r="8" fill="#6366f1" fillOpacity="0.6" />
-
-      {/* Stats row */}
-      {[
-        { x: 176, color: '#3b82f6', label: 'Total Job File', val: '1.284', sub: '+24 hari ini' },
-        { x: 412, color: '#06b6d4', label: 'Invoice Terbit', val: 'Rp 842 Jt', sub: 'bulan ini' },
-        { x: 648, color: '#10b981', label: 'Selisih Laba', val: 'Rp 128 Jt', sub: 'estimasi bersih' },
-      ].map((s) => (
-        <g key={s.x}>
-          <rect x={s.x} y="102" width="220" height="80" rx="12" fill="#1a1d2e" />
-          <rect x={s.x + 12} y="114" width="8" height="28" rx="4" fill={s.color} />
-          <rect x={s.x + 28} y="114" width="80" height="8" rx="4" fill="#475569" />
-          <rect x={s.x + 28} y="128" width={[110, 100, 90][([176, 412, 648].indexOf(s.x))]} height="14" rx="7" fill="#f1f5f9" fillOpacity="0.9" />
-          <rect x={s.x + 28} y="150" width="60" height="8" rx="4" fill={s.color} fillOpacity="0.7" />
-        </g>
-      ))}
-
-      {/* Chart area */}
-      <rect x="176" y="196" width="460" height="200" rx="12" fill="#1a1d2e" />
-      <rect x="192" y="210" width="100" height="10" rx="5" fill="#f1f5f9" fillOpacity="0.7" />
-      <polyline
-        points="192,360 240,320 290,340 340,290 390,310 440,260 490,280 540,240 590,260 620,230"
-        fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinejoin="round"
-      />
-      <polygon
-        points="192,360 240,320 290,340 340,290 390,310 440,260 490,280 540,240 590,260 620,230 620,380 192,380"
-        fill="url(#blueGrad)" fillOpacity="0.2"
-      />
-      <polyline
-        points="192,380 240,355 290,365 340,340 390,350 440,320 490,335 540,310 590,325 620,305"
-        fill="none" stroke="#06b6d4" strokeWidth="2" strokeLinejoin="round" strokeDasharray="4 2"
-      />
-      <defs>
-        <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#3b82f6" />
-          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-
-      {/* Job File table */}
-      <rect x="176" y="410" width="460" height="140" rx="12" fill="#1a1d2e" />
-      <rect x="192" y="422" width="80" height="10" rx="5" fill="#f1f5f9" fillOpacity="0.7" />
-      {['SF-20261031', 'SF-20261030', 'SF-20261029'].map((no, i) => (
-        <g key={no}>
-          <rect x="192" y={446 + i * 34} width="420" height="28" rx="6" fill={i % 2 === 0 ? '#151728' : 'transparent'} />
-          <rect x="200" y={452 + i * 34} width="90" height="10" rx="5" fill="#94a3b8" fillOpacity="0.7" />
-          <rect x="310" y={452 + i * 34} width="70" height="10" rx="5" fill="#94a3b8" fillOpacity="0.5" />
-          <rect x="500" y={450 + i * 34} width="60" height="14" rx="7"
-            fill={['#dcfce7', '#fef9c3', '#dbeafe'][i]}
-          />
-          <rect x="510" y={454 + i * 34} width="40" height="7" rx="3.5"
-            fill={['#16a34a', '#ca8a04', '#2563eb'][i]}
-          />
-        </g>
-      ))}
-
-      {/* Right panel */}
-      <rect x="652" y="196" width="232" height="354" rx="12" fill="#1a1d2e" />
-      <rect x="668" y="212" width="100" height="10" rx="5" fill="#f1f5f9" fillOpacity="0.7" />
-      {[
-        { label: 'PT. Maju Logistics', val: 'Rp 24 Jt', color: '#3b82f6' },
-        { label: 'CV. Nusantara Cargo', val: 'Rp 18 Jt', color: '#06b6d4' },
-        { label: 'PT. Indo Express', val: 'Rp 32 Jt', color: '#10b981' },
-        { label: 'PT. Trans Global', val: 'Rp 11 Jt', color: '#f59e0b' },
-      ].map((item, i) => (
-        <g key={i}>
-          <rect x="668" y={238 + i * 64} width="200" height="52" rx="8" fill="#0f1120" />
-          <rect x="680" y={250 + i * 64} width="8" height="28" rx="4" fill={item.color} />
-          <rect x="696" y={250 + i * 64} width="80" height="8" rx="4" fill="#94a3b8" fillOpacity="0.7" />
-          <rect x="696" y={264 + i * 64} width="60" height="10" rx="5" fill="#f1f5f9" fillOpacity="0.85" />
-        </g>
-      ))}
-      <rect x="668" y="498" width="200" height="36" rx="8" fill="#2563eb" />
-      <rect x="720" y="510" width="96" height="12" rx="6" fill="#fff" fillOpacity="0.9" />
-    </svg>
-  );
-}
-
 // ─── Check Icon ────────────────────────────────────────────────────────────────
 function CheckIcon({ className = '' }: { className?: string }) {
   return (
@@ -302,30 +186,39 @@ export default async function LandingPage() {
               </div>
             </div>
 
-            {/* RIGHT: Dashboard Mockup */}
-            <div className="relative lg:block">
-              {/* Glow behind mockup */}
-              <div className="absolute inset-0 bg-blue-400/20 rounded-3xl blur-3xl scale-90 pointer-events-none" />
+            {/* RIGHT: Responsive Dashboard Device Mockup */}
+            <div className="relative w-full flex items-center justify-center lg:justify-end mt-8 lg:mt-0">
+              {/* Vibrant radial glow backdrop */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/25 via-blue-500/30 to-indigo-500/25 rounded-full blur-3xl scale-95 pointer-events-none" />
 
-              {/* Floating badges */}
-              <div className="absolute -top-6 -left-4 z-10 flex items-center gap-2 bg-white rounded-2xl shadow-2xl px-4 py-3 border border-slate-100">
+              {/* Floating badges - positioned responsively */}
+              <div className="hidden sm:flex absolute -top-4 -left-2 sm:-left-4 z-20 items-center gap-3 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl px-4 py-3 border border-white/60 transform hover:-translate-y-1 transition-transform">
                 <span className="text-2xl">📦</span>
                 <div>
-                  <p className="text-xs text-slate-500 font-medium">Job File Baru</p>
-                  <p className="text-sm font-bold text-slate-800">SF-20261031-084</p>
-                </div>
-              </div>
-              <div className="absolute -bottom-4 -right-2 z-10 flex items-center gap-2 bg-white rounded-2xl shadow-2xl px-4 py-3 border border-slate-100">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 font-bold text-sm">✓</div>
-                <div>
-                  <p className="text-xs text-slate-500 font-medium">Invoice Lunas</p>
-                  <p className="text-sm font-bold text-green-600">+Rp 24.000.000</p>
+                  <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Job File Baru</p>
+                  <p className="text-sm font-extrabold text-slate-900 font-mono">SF-20261031-084</p>
                 </div>
               </div>
 
-              {/* Main mockup frame */}
-              <div className="relative rounded-2xl overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.5)] border border-white/10">
-                <DashboardMockup />
+              <div className="hidden sm:flex absolute -bottom-3 -right-2 sm:right-2 z-20 items-center gap-3 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl px-4 py-3 border border-white/60 transform hover:-translate-y-1 transition-transform">
+                <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 font-black text-base shadow-sm">✓</div>
+                <div>
+                  <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Invoice Lunas</p>
+                  <p className="text-sm font-extrabold text-emerald-600 font-mono">+Rp 24.000.000</p>
+                </div>
+              </div>
+
+              {/* Responsive Device Mockup Image */}
+              <div className="relative z-10 w-full max-w-[580px] lg:max-w-none flex items-center justify-center group">
+                <Image
+                  src="/hero-mockup.png"
+                  alt="Dashboard Operasional Sistem Forwarding di Desktop iMac dan Mobile iPhone"
+                  width={1006}
+                  height={628}
+                  priority
+                  className="w-full h-auto object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.5)] transform group-hover:scale-[1.02] transition-transform duration-500 ease-out"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 85vw, 600px"
+                />
               </div>
             </div>
           </div>
