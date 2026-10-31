@@ -5,6 +5,7 @@ import { SubscriptionStatus, UserRole, PrefixType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { createSessionToken, setSessionCookie } from "@/lib/auth";
 import { headers } from "next/headers";
+import { createBorderPayQris } from "@/lib/borderpay";
 
 const RESERVED_SUBDOMAINS = new Set([
   "admin",
@@ -51,6 +52,7 @@ export interface RegisterTenantResult {
     amount: number;
     referenceId: string;
     qrisString: string;
+    paymentUrl?: string;
     expiresAt: string;
   };
   error?: string;
@@ -292,10 +294,32 @@ export async function registerNewTenant(
     // 3. For Paid Plans: Generate BorderPay QRIS Payment Session
     if (isPaidPlan) {
       const referenceId = `SUB-${newTenant.subdomain}-${Date.now().toString().slice(-6)}`;
-      const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 minutes expiry
+      const qrisResult = await createBorderPayQris({
+        amount: planPrice,
+        referenceId,
+        description: `Langganan SistemForwarding - ${newTenant.companyName} (${plan.toUpperCase()})`,
+        customerEmail: user.email,
+        customerName: user.name,
+      });
 
-      // Dynamic QRIS payload string conforming to BorderPay & ASPI standards
-      const qrisString = `00020101021226670014ID.LINKAJA.WWW01189360091800000000000215${referenceId}520459995303360540${planPrice}5802ID5920SISTEMFORWARDING.COM6007JAKARTA6304`;
+      // Save BorderPay reference mapping into tenant settings
+      try {
+        await prisma.tenant.update({
+          where: { id: newTenant.id },
+          data: {
+            settings: {
+              ...(typeof newTenant.settings === "object" && newTenant.settings !== null
+                ? newTenant.settings
+                : {}),
+              borderpayRef: qrisResult.referenceId || null,
+              borderpayExternalId: referenceId,
+              planPrice,
+            },
+          },
+        });
+      } catch (settingsErr) {
+        console.warn("[Onboarding Autopilot] Could not persist BorderPay ref to settings:", settingsErr);
+      }
 
       return {
         success: true,
@@ -305,9 +329,10 @@ export async function registerNewTenant(
         requiresPayment: true,
         paymentDetails: {
           amount: planPrice,
-          referenceId,
-          qrisString,
-          expiresAt,
+          referenceId: qrisResult.referenceId || referenceId,
+          qrisString: qrisResult.qrisString || "",
+          paymentUrl: qrisResult.paymentUrl,
+          expiresAt: qrisResult.expiresAt || new Date(Date.now() + 30 * 60 * 1000).toISOString(),
         },
       };
     }
@@ -365,6 +390,24 @@ export async function simulateBorderPayPayment(
   amount: number = 1000000
 ): Promise<{ ok: boolean; status: number }> {
   try {
+    // If this is a real BorderPay test transaction (ORD-xxx), trigger simulation on BorderPay's sandbox directly
+    if (referenceId.startsWith("ORD-")) {
+      const apiKey = process.env.BORDERPAY_API_KEY_LIVE || process.env.BORDERPAY_API_KEY_TEST;
+      if (apiKey) {
+        try {
+          await fetch(`https://borderpay.id/api/v1/payments/${referenceId}/simulate`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+          });
+        } catch (simErr) {
+          console.warn("[simulateBorderPayPayment] Live simulate call warning:", simErr);
+        }
+      }
+    }
+
     const { NextRequest } = await import("next/server");
     const { POST: borderpayHandler } = await import("@/app/api/webhooks/borderpay/route");
 

@@ -33,12 +33,16 @@ export interface BorderPayWebhookPayload {
  */
 export async function POST(req: NextRequest) {
   try {
-    // 1. Security Check: Validate x-borderpay-token header
-    const borderpayToken = req.headers.get("x-borderpay-token");
+    // 1. Security Check: Validate x-borderpay-token header or bearer auth
+    const borderpayToken =
+      req.headers.get("x-borderpay-token") ||
+      req.headers.get("x-webhook-token") ||
+      req.headers.get("borderpay-verification-token") ||
+      req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
     const expectedToken = process.env.BORDERPAY_VERIFICATION_TOKEN;
 
     if (!borderpayToken || borderpayToken !== expectedToken) {
-      console.warn("[BorderPay Webhook] 401 Unauthorized: Invalid or missing x-borderpay-token.");
+      console.warn("[BorderPay Webhook] 401 Unauthorized: Invalid or missing verification token.");
       return NextResponse.json(
         { error: "Unauthorized: Invalid verification token" },
         { status: 401 }
@@ -46,11 +50,21 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Parse Incoming Payload
-    const payload: BorderPayWebhookPayload = await req.json();
-    const { event, data } = payload;
-    const referenceId = data?.referenceId || "";
+    const payload: any = await req.json();
+    console.info("[BorderPay Webhook Raw Payload]", JSON.stringify(payload));
 
-    console.info(`[BorderPay Webhook] Received ${event} for Ref: ${referenceId}, Amount: ${data?.amount}`);
+    const event = payload.event || (payload.status === "paid" ? "payment.paid" : payload.type || "");
+    const data = payload.data || payload;
+    const referenceId =
+      data.external_id ||
+      data.externalId ||
+      data.reference_id ||
+      data.referenceId ||
+      payload.external_id ||
+      payload.reference_id ||
+      "";
+
+    console.info(`[BorderPay Webhook] Event: '${event}' | Reference: '${referenceId}' | Amount: ${data?.amount}`);
 
     switch (event) {
       /**
@@ -58,7 +72,9 @@ export async function POST(req: NextRequest) {
        * Handle both New Tenant Subscription Onboarding and Commercial Invoice Settlement
        */
       case "payment.paid": {
-        // SCENARIO A: Tenant Subscription Onboarding (Ref starts with "SUB-")
+        // SCENARIO A: Tenant Subscription Onboarding
+        let tenant = null;
+
         if (referenceId.startsWith("SUB-") || data.metadata?.subdomain) {
           const targetSubdomain =
             data.metadata?.subdomain ||
@@ -66,27 +82,52 @@ export async function POST(req: NextRequest) {
               ? referenceId.slice(4, referenceId.lastIndexOf("-"))
               : "");
 
-          const tenant = await prisma.tenant.findUnique({
-            where: { subdomain: targetSubdomain },
+          if (targetSubdomain) {
+            tenant = await prisma.tenant.findUnique({
+              where: { subdomain: targetSubdomain },
+              include: { users: { take: 1 } },
+            });
+          }
+        }
+
+        // If not found by prefix, find by BorderPay reference stored in settings or recent trial tenants
+        if (!tenant && referenceId) {
+          const candidates = await prisma.tenant.findMany({
+            where: {
+              subscriptionStatus: { in: [SubscriptionStatus.TRIAL, SubscriptionStatus.EXPIRED] },
+            },
             include: { users: { take: 1 } },
+            orderBy: { createdAt: "desc" },
+            take: 20,
           });
 
-          if (tenant) {
-            // Activate tenant subscription
-            const durationEndsAt = new Date();
-            if (tenant.billingCycle === "YEARLY") {
-              durationEndsAt.setFullYear(durationEndsAt.getFullYear() + 1);
-            } else {
-              durationEndsAt.setMonth(durationEndsAt.getMonth() + 1);
-            }
+          tenant =
+            candidates.find((t) => {
+              const s = (t.settings as any) || {};
+              return (
+                s.borderpayRef === referenceId ||
+                s.borderpayExternalId === referenceId ||
+                (t.subdomain && referenceId.includes(t.subdomain))
+              );
+            }) || null;
+        }
 
-            await prisma.tenant.update({
-              where: { id: tenant.id },
-              data: {
-                subscriptionStatus: SubscriptionStatus.ACTIVE,
-                trialEndsAt: durationEndsAt,
-              },
-            });
+        if (tenant) {
+          // Activate tenant subscription
+          const durationEndsAt = new Date();
+          if (tenant.billingCycle === "YEARLY") {
+            durationEndsAt.setFullYear(durationEndsAt.getFullYear() + 1);
+          } else {
+            durationEndsAt.setMonth(durationEndsAt.getMonth() + 1);
+          }
+
+          await prisma.tenant.update({
+            where: { id: tenant.id },
+            data: {
+              subscriptionStatus: SubscriptionStatus.ACTIVE,
+              trialEndsAt: durationEndsAt,
+            },
+          });
 
             const rootDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "sistemforwarding.com";
             const uniqueWorkspaceUrl = `https://${tenant.subdomain}.${rootDomain}`;
@@ -144,7 +185,6 @@ export async function POST(req: NextRequest) {
               status: "ACTIVE",
             });
           }
-        }
 
         // SCENARIO B: Operational Freight Commercial Invoice Settlement
         const invoice = await prisma.invoice.findFirst({

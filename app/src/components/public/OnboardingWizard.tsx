@@ -729,6 +729,20 @@ export function OnboardingWizard({ initialPlan = "trial" }: OnboardingWizardProp
                       Ref: {registrationResult.paymentDetails?.referenceId}
                     </div>
 
+                    {registrationResult.paymentDetails?.paymentUrl && (
+                      <div className="pt-1">
+                        <a
+                          href={registrationResult.paymentDetails.paymentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium underline"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          <span>Buka Halaman Checkout BorderPay</span>
+                        </a>
+                      </div>
+                    )}
+
                     <div className="pt-2">
                       <button
                         type="button"
