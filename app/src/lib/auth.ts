@@ -9,6 +9,12 @@ export interface SessionPayload {
   tenantId: string | null;
   subdomain: string | null;
   companyName?: string | null;
+  isImpersonating?: boolean;
+  originalSuperAdmin?: {
+    userId: string;
+    name: string;
+    email: string;
+  };
 }
 
 const JWT_SECRET =
@@ -65,42 +71,85 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
  * Sets the HttpOnly session cookie on the Next.js response headers with 7 days expiry.
  */
 export async function setSessionCookie(token: string, hostHeader?: string | null) {
-  const cookieStore = await cookies();
-  const domain = getSessionCookieDomain(hostHeader);
+  try {
+    const cookieStore = await cookies();
+    const domain = getSessionCookieDomain(hostHeader);
 
-  cookieStore.set(SESSION_COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    domain: domain || undefined,
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-    secure: process.env.NODE_ENV === "production",
-  });
+    // If wildcard domain is specified, also clear host-bound cookie to avoid shadowing
+    if (domain) {
+      cookieStore.set(SESSION_COOKIE_NAME, "", {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 0,
+        expires: new Date(0),
+        secure: process.env.NODE_ENV === "production",
+      });
+    }
+
+    cookieStore.set(SESSION_COOKIE_NAME, token, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      domain: domain || undefined,
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      secure: process.env.NODE_ENV === "production",
+    });
+  } catch {
+    // Graceful fallback outside request lifecycle (e.g. CLI tests)
+  }
 }
+
+export { getUserInitials } from "./auth-utils";
 
 /**
  * Clears the session cookie across the entire wildcard domain and host.
  */
 export async function clearSessionCookie(hostHeader?: string | null) {
-  const cookieStore = await cookies();
-  const domain = getSessionCookieDomain(hostHeader);
+  try {
+    const cookieStore = await cookies();
+    const domain = getSessionCookieDomain(hostHeader);
 
-  cookieStore.set(SESSION_COOKIE_NAME, "", {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    domain: domain || undefined,
-    maxAge: 0,
-    expires: new Date(0),
-  });
+    // 1. Explicitly clear wildcard domain cookie if applicable
+    if (domain) {
+      cookieStore.set(SESSION_COOKIE_NAME, "", {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        domain: domain,
+        maxAge: 0,
+        expires: new Date(0),
+        secure: process.env.NODE_ENV === "production",
+      });
+    }
+
+    // 2. Clear host-specific cookie (bound to current host without wildcard domain)
+    cookieStore.set(SESSION_COOKIE_NAME, "", {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+      expires: new Date(0),
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    // 3. Fallback standard delete
+    cookieStore.delete(SESSION_COOKIE_NAME);
+  } catch {
+    // Graceful fallback outside request lifecycle (e.g. CLI tests)
+  }
 }
 
 /**
  * Reads and verifies the current session from incoming cookies.
  */
 export async function getCurrentSession(): Promise<SessionPayload | null> {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  if (!sessionCookie) return null;
-  return await verifySessionToken(sessionCookie);
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    if (!sessionCookie) return null;
+    return await verifySessionToken(sessionCookie);
+  } catch {
+    return null;
+  }
 }

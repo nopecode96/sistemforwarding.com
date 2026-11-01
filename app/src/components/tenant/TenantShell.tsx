@@ -6,7 +6,6 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  FileSpreadsheet,
   Wallet,
   Settings,
   Menu,
@@ -19,16 +18,14 @@ import {
   Search,
   Sun,
   Moon,
-  Sparkles,
-  Command,
-  Activity,
   Layers,
   BarChart3,
-  CheckCircle2,
   Users,
   Truck,
 } from "lucide-react";
 import { ThemeProvider, useTheme } from "./ThemeProvider";
+import { TenantBroadcastBanner } from "./TenantBroadcastBanner";
+import { logoutAction } from "@/lib/auth-actions";
 
 interface TenantShellProps {
   tenant: string;
@@ -38,6 +35,7 @@ interface TenantShellProps {
   userName?: string;
   userEmail?: string;
   userRole?: string;
+  isImpersonating?: boolean;
   children: React.ReactNode;
 }
 
@@ -49,12 +47,25 @@ function TenantShellContent({
   userName = "Admin Operasional",
   userEmail,
   userRole = "Tenant Admin",
+  isImpersonating = false,
   children,
 }: TenantShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { theme, toggleTheme, setTheme } = useTheme();
   const pathname = usePathname();
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await logoutAction();
+    } catch (err) {
+      console.error("[TenantShell] Logout error:", err);
+    }
+    window.location.href = "/api/auth/logout";
+  };
 
   const displayLogo = logoUrl && logoUrl.trim() !== "" ? logoUrl : "/logo.png";
   const displayEmail = userEmail || `${tenant}@sistemforwarding.com`;
@@ -264,14 +275,16 @@ function TenantShellContent({
                     </p>
                   </div>
                 </div>
-                <a
-                  href="/api/auth/logout"
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-100 dark:border-rose-900/40 transition-colors"
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-100 dark:border-rose-900/40 transition-colors cursor-pointer disabled:opacity-50"
                   title="Keluar dari sistem"
                 >
                   <LogOut className="h-3.5 w-3.5" />
-                  <span>Keluar</span>
-                </a>
+                  <span>{isLoggingOut ? "Keluar..." : "Keluar"}</span>
+                </button>
               </div>
             </div>
           </div>
@@ -435,14 +448,16 @@ function TenantShellContent({
                 </p>
               </div>
             </div>
-            <a
-              href="/api/auth/logout"
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
               title="Keluar dari Ruang Kerja"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-100 dark:border-rose-900/40 transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-100 dark:border-rose-900/40 transition-colors cursor-pointer disabled:opacity-50"
             >
               <LogOut className="h-3.5 w-3.5" />
-              <span>Keluar</span>
-            </a>
+              <span>{isLoggingOut ? "Keluar..." : "Keluar"}</span>
+            </button>
           </div>
         </div>
       </aside>
@@ -452,7 +467,11 @@ function TenantShellContent({
       {/* ==================================================================== */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Sticky Header with Omni-Search & View Switchers */}
-        <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center justify-between gap-3 sm:gap-4 border-b border-slate-200/80 dark:border-white/[0.08] bg-white/95 dark:bg-[#0b0e14]/95 px-3 sm:px-6 lg:px-8 backdrop-blur-md transition-colors w-full">
+        <header
+          className={`sticky ${
+            isImpersonating ? "top-[44px]" : "top-0"
+          } z-30 flex h-14 sm:h-16 items-center justify-between gap-3 sm:gap-4 border-b border-slate-200/80 dark:border-white/[0.08] bg-white/95 dark:bg-[#0b0e14]/95 px-3 sm:px-6 lg:px-8 backdrop-blur-md transition-colors w-full`}
+        >
           {/* Left: Mobile Toggle & Mobile Logo & Global Omni Search */}
           <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-xl">
             <button
@@ -611,17 +630,22 @@ function TenantShellContent({
               </div>
 
               {/* Header Logout Action */}
-              <a
-                href="/api/auth/logout"
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
                 title="Keluar dari sistem (Logout)"
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl sm:rounded-2xl text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200/60 dark:border-rose-800/40 transition-all shadow-xs"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl sm:rounded-2xl text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200/60 dark:border-rose-800/40 transition-all shadow-xs cursor-pointer disabled:opacity-50"
               >
                 <LogOut className="h-3.5 w-3.5 shrink-0" />
-                <span className="hidden sm:inline">Keluar</span>
-              </a>
+                <span className="hidden sm:inline">{isLoggingOut ? "Keluar..." : "Keluar"}</span>
+              </button>
             </div>
           </div>
         </header>
+
+        {/* Platform Broadcast Announcement Banner */}
+        <TenantBroadcastBanner subdomain={tenant} />
 
         {/* Child Content Viewport */}
         <main className="flex-1 p-3.5 sm:p-6 lg:p-8 bg-[#f4f6fa] dark:bg-[#0b0e14] transition-colors overflow-x-hidden min-w-0">
