@@ -46,6 +46,16 @@ export default function AboutPage() {
               <Link href="/about" className="text-blue-600 font-bold transition-colors">Tentang Kami</Link>
             </nav>
             <div className="flex items-center gap-3">
+              <a
+                href="https://wa.me/6281122823696?text=Halo%20Customer%20Service%20Sistem%20Forwarding,%20saya%20ingin%20konsultasi%20seputar%20software%20kargo%20%26%20freight%20forwarding."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden lg:flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-3 py-2 rounded-xl transition-all shadow-2xs"
+                title="Hubungi Customer Service via WhatsApp"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>WhatsApp CS</span>
+              </a>
               <Link href="/login" className="hidden md:block text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">
                 Masuk
               </Link>
@@ -299,6 +309,17 @@ export default function AboutPage() {
               <ul className="space-y-3 text-sm">
                 <li><Link href="/about" className="hover:text-blue-400 transition-colors">Tentang Kami</Link></li>
                 <li><Link href="/blog" className="hover:text-blue-400 transition-colors">Artikel &amp; Edukasi</Link></li>
+                <li>
+                  <a
+                    href="https://wa.me/6281122823696?text=Halo%20Customer%20Service%20Sistem%20Forwarding,%20saya%20ingin%20konsultasi%20software%20freight%20forwarding."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors flex items-center gap-1.5"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span>WhatsApp CS (0811-2282-3696)</span>
+                  </a>
+                </li>
                 <li><Link href="/about" className="hover:text-blue-400 transition-colors">Hubungi Tim Kami</Link></li>
               </ul>
             </div>

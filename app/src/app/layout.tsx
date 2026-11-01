@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import { ScrollToTop } from "@/components/public/ScrollToTop";
 import { GooglePopupCallback } from "@/components/public/GooglePopupCallback";
+import { WhatsAppWidget } from "@/components/public/WhatsAppWidget";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -78,6 +79,7 @@ export default function RootLayout({
         <GooglePopupCallback />
         {children}
         <ScrollToTop />
+        <WhatsAppWidget />
       </body>
     </html>
   );
