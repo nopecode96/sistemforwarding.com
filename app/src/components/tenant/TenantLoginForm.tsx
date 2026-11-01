@@ -30,12 +30,17 @@ export function TenantLoginForm({
     formData.set("subdomain", subdomain);
 
     startTransition(async () => {
-      const res = await loginTenantAction(formData);
-      if (!res.success) {
-        setError(res.error || "Gagal masuk. Periksa kembali kredensial Anda.");
-      } else {
-        // Redirect to dashboard of this subdomain
-        window.location.href = res.redirectUrl || "/";
+      try {
+        const res = await loginTenantAction(formData);
+        if (!res.success) {
+          setError(res.error || "Gagal masuk. Periksa kembali kredensial Anda.");
+        } else {
+          // Redirect to dashboard of this subdomain
+          window.location.href = res.redirectUrl || "/";
+        }
+      } catch (err) {
+        console.warn("[TenantLoginForm] Deployment update detected, reloading page...", err);
+        window.location.reload();
       }
     });
   };

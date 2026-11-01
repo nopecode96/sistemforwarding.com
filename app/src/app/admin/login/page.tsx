@@ -20,11 +20,16 @@ export default function AdminLoginPage() {
     formData.set("password", password);
 
     startTransition(async () => {
-      const res = await loginAdminAction(formData);
-      if (!res.success) {
-        setError(res.error || "Akses Super Admin ditolak.");
-      } else {
-        window.location.href = res.redirectUrl || "/";
+      try {
+        const res = await loginAdminAction(formData);
+        if (!res.success) {
+          setError(res.error || "Akses Super Admin ditolak.");
+        } else {
+          window.location.href = res.redirectUrl || "/";
+        }
+      } catch (err) {
+        console.warn("[AdminLoginPage] Deployment update detected, reloading page...", err);
+        window.location.reload();
       }
     });
   };
