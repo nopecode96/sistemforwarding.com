@@ -23,9 +23,9 @@ export const metadata: Metadata = {
 };
 
 // ─── Check Icon ────────────────────────────────────────────────────────────────
-function CheckIcon({ className = '' }: { className?: string }) {
+function CheckIcon({ className = 'w-5 h-5' }: { className?: string }) {
   return (
-    <svg className={`w-5 h-5 shrink-0 ${className}`} viewBox="0 0 20 20" fill="currentColor">
+    <svg className={`shrink-0 ${className}`} viewBox="0 0 20 20" fill="currentColor">
       <path
         fillRule="evenodd"
         d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -632,60 +632,117 @@ export default async function LandingPage() {
       {/* ══════════════════════════════════════════
           PRICING — Dynamic dari DB
       ══════════════════════════════════════════ */}
-      <section id="harga" className="py-28 bg-white relative overflow-hidden scroll-mt-24">
+      <section id="harga" className="py-20 lg:py-24 bg-slate-50/60 relative overflow-hidden scroll-mt-20">
         <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
         <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <span className="inline-block px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 text-sm font-bold mb-4">
+          <div className="text-center mb-12">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 text-xs font-bold tracking-wider uppercase mb-3">
               Paket Harga
             </span>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-5 tracking-tight">
+            <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-4 tracking-tight">
               Investasi Transparan,<br />
               <span className="text-blue-600">Tanpa Biaya Tersembunyi</span>
             </h2>
-            <p className="text-lg text-slate-500 max-w-xl mx-auto">
+            <p className="text-base md:text-lg text-slate-500 max-w-xl mx-auto">
               Harga langsung dari sistem kami. Pilih paket sesuai skala bisnis Anda.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto items-center">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-4 xl:gap-6 max-w-7xl mx-auto items-stretch">
             {plans.map((plan) => (
               <div
                 key={plan.id}
-                className={`relative rounded-3xl flex flex-col transition-all duration-300 hover:-translate-y-1 ${
+                className={`relative rounded-3xl flex flex-col justify-between transition-all duration-300 hover:shadow-2xl h-full ${
                   plan.isPopular
-                    ? 'bg-gradient-to-b from-blue-600 to-blue-700 text-white shadow-2xl shadow-blue-600/40 scale-105 border-0'
-                    : 'bg-white text-slate-800 border border-slate-200 shadow-lg shadow-slate-200/60 hover:border-blue-200 hover:shadow-xl'
+                    ? 'bg-gradient-to-b from-blue-600 via-blue-600 to-indigo-700 text-white shadow-xl shadow-blue-500/25 ring-2 ring-blue-500 lg:-translate-y-2'
+                    : 'bg-white text-slate-800 border border-slate-200 shadow-md shadow-slate-100 hover:border-blue-300'
                 }`}
               >
                 {plan.isPopular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 text-xs font-black px-4 py-1.5 rounded-full shadow-lg uppercase tracking-wider">
-                    ⭐ Paling Populer
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 text-[11px] font-black px-3.5 py-1 rounded-full shadow-md uppercase tracking-wider whitespace-nowrap z-10 flex items-center gap-1">
+                    <span>⭐</span> Paling Populer
                   </div>
                 )}
-                <div className={`p-8 ${plan.isPopular ? '' : ''}`}>
-                  <h3 className={`text-xl font-bold mb-1 ${plan.isPopular ? 'text-blue-100' : 'text-slate-500'}`}>{plan.name}</h3>
-                  <div className="flex items-end gap-1 mb-2">
-                    <span className={`text-4xl md:text-5xl font-extrabold ${plan.isPopular ? 'text-white' : 'text-slate-900'}`}>
-                      {plan.price === 0 ? 'Gratis' : `Rp ${plan.price.toLocaleString('id-ID')}`}
-                    </span>
+
+                {/* Card Content Top + Middle */}
+                <div className="p-5 sm:p-6 xl:p-7 flex-1 flex flex-col">
+                  {/* Plan Name */}
+                  <h3 className={`text-lg font-bold mb-1 ${plan.isPopular ? 'text-white' : 'text-slate-900'}`}>
+                    {plan.name}
+                  </h3>
+
+                  {/* Strikethrough / Badge Row - Fixed Height for Uniform Card Alignment */}
+                  <div className="min-h-6 flex items-center mb-2.5">
+                    {plan.originalPrice && plan.originalPrice > plan.price ? (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`line-through text-xs font-mono font-medium ${plan.isPopular ? 'text-blue-200/90' : 'text-slate-400'}`}>
+                          Rp {plan.originalPrice.toLocaleString('id-ID')}
+                        </span>
+                        <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full shrink-0 ${
+                          plan.isPopular ? 'bg-amber-400 text-slate-900 shadow-sm' : 'bg-rose-100 text-rose-700'
+                        }`}>
+                          Diskon {Math.round(((plan.originalPrice - plan.price) / plan.originalPrice) * 100)}%
+                        </span>
+                      </div>
+                    ) : (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        plan.isPopular ? 'bg-blue-500/40 text-blue-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                      }`}>
+                        Tanpa Komitmen
+                      </span>
+                    )}
                   </div>
-                  <p className={`text-sm font-medium mb-8 ${plan.isPopular ? 'text-blue-200' : 'text-slate-400'}`}>{plan.period}</p>
-                  <ul className="space-y-4 mb-8">
+
+                  {/* Price & Billing Cycle */}
+                  <div className={`pb-4 mb-4 border-b ${plan.isPopular ? 'border-blue-400/30' : 'border-slate-100'}`}>
+                    {plan.price === 0 ? (
+                      <div className="flex items-baseline gap-1.5">
+                        <span className={`text-3xl xl:text-4xl font-extrabold tracking-tight ${plan.isPopular ? 'text-white' : 'text-slate-900'}`}>
+                          Gratis
+                        </span>
+                        <span className={`text-xs font-semibold ${plan.isPopular ? 'text-blue-200' : 'text-slate-500'}`}>
+                          / 7 hari
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
+                        <div className="flex items-baseline gap-1">
+                          <span className={`text-xs sm:text-sm font-bold ${plan.isPopular ? 'text-blue-200' : 'text-slate-500'}`}>
+                            Rp
+                          </span>
+                          <span className={`text-2xl sm:text-[26px] xl:text-[30px] font-black tracking-tight leading-none ${plan.isPopular ? 'text-white' : 'text-slate-900'}`}>
+                            {plan.price.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                        <span className={`text-xs font-semibold shrink-0 ${plan.isPopular ? 'text-blue-200' : 'text-slate-500'}`}>
+                          {plan.period.startsWith('/') ? plan.period : `/ ${plan.period}`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Feature Bullets */}
+                  <ul className="space-y-3 mb-6 flex-1">
                     {plan.features.map((f, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <CheckIcon className={plan.isPopular ? 'text-cyan-300' : 'text-blue-500'} />
-                        <span className={`text-sm ${plan.isPopular ? 'text-blue-100' : 'text-slate-600'}`}>{f}</span>
+                      <li key={i} className="flex items-start gap-2.5">
+                        <CheckIcon className={`w-4 h-4 shrink-0 mt-0.5 ${plan.isPopular ? 'text-cyan-300' : 'text-blue-600'}`} />
+                        <span className={`text-xs xl:text-sm leading-relaxed ${plan.isPopular ? 'text-blue-100' : 'text-slate-600'}`}>
+                          {f}
+                        </span>
                       </li>
                     ))}
                   </ul>
+                </div>
+
+                {/* Card Action Button - Perfectly Aligned at Bottom */}
+                <div className="p-5 sm:p-6 xl:p-7 pt-0 mt-auto">
                   <Link
                     href={`/onboarding?plan=${plan.planKey || plan.id}`}
-                    className={`block w-full py-3.5 text-center rounded-xl font-bold text-sm transition-all ${
+                    className={`block w-full py-3 text-center rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 ${
                       plan.isPopular
-                        ? 'bg-white text-blue-700 hover:bg-blue-50 shadow-lg'
+                        ? 'bg-white text-blue-700 hover:bg-blue-50 shadow-lg shadow-black/10'
                         : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-600/20'
                     }`}
                   >
@@ -696,7 +753,7 @@ export default async function LandingPage() {
             ))}
           </div>
 
-          <p className="text-center text-sm text-slate-400 mt-10">
+          <p className="text-center text-xs sm:text-sm text-slate-400 mt-10">
             Semua paket termasuk setup awal & onboarding. Tidak ada kontrak jangka panjang. Batalkan kapan saja.
           </p>
         </div>
