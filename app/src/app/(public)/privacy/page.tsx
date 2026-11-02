@@ -1,6 +1,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { PublicFooter } from '@/components/public/PublicFooter';
+import { PublicHeader } from '@/components/public/PublicHeader';
 
 export const metadata: Metadata = {
   title: 'Kebijakan Privasi Data | Sistem Forwarding',
@@ -10,24 +12,7 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <div className="font-sans text-slate-800 bg-white selection:bg-cyan-500 selection:text-white overflow-x-hidden">
-      <header className="fixed top-0 inset-x-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-          <div className="flex items-center justify-between bg-white/80 backdrop-blur-xl border border-white/60 rounded-2xl px-6 h-16 shadow-lg shadow-slate-900/5">
-            <Link href="/" className="flex items-center">
-              <Image src="/logo.png" alt="Sistem Forwarding" width={180} height={44} className="h-10 w-auto object-contain" priority />
-            </Link>
-            <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
-              <Link href="/#fitur" className="hover:text-blue-600 transition-colors">Fitur</Link>
-              <Link href="/#harga" className="hover:text-blue-600 transition-colors">Harga</Link>
-              <Link href="/blog" className="hover:text-blue-600 transition-colors">Edukasi</Link>
-              <Link href="/about" className="hover:text-blue-600 transition-colors">Tentang Kami</Link>
-            </nav>
-            <Link href="/onboarding?plan=trial" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md">
-              Coba Gratis →
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicHeader />
 
       <section className="relative pt-36 pb-16 bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-900 text-white text-center">
         <div className="max-w-4xl mx-auto px-4">
@@ -59,9 +44,7 @@ export default function PrivacyPage() {
         </section>
       </main>
 
-      <footer className="bg-slate-950 text-slate-400 py-10 text-center text-xs">
-        <p>© {new Date().getFullYear()} sistemforwarding.com · PT. Rafa Kreasindo Teknologi. Hak Cipta Dilindungi.</p>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

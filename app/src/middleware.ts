@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/auth";
+import { verifySessionToken, SESSION_COOKIE_NAME, getSessionCookieDomain } from "@/lib/auth";
 
 // Root apex domain from environment or default fallback
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || "sistemforwarding.com";
@@ -71,6 +71,14 @@ export async function middleware(req: NextRequest) {
   // CASE 1: Super Admin Portal (admin.sistemforwarding.com)
   // ============================================================================
   if (subdomain === "admin") {
+    // 1.0 Canonical Clean URL: If requested path redundantly includes /admin, redirect to clean path
+    if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+      const cleanPath = pathname.slice(6) || "/";
+      const cleanUrl = new URL(cleanPath, req.url);
+      cleanUrl.search = url.search;
+      return NextResponse.redirect(cleanUrl);
+    }
+
     const isSuperAdmin = session && session.role === "SUPERADMIN";
 
     // 1.1 Accessing /login on admin subdomain
@@ -112,6 +120,17 @@ export async function middleware(req: NextRequest) {
       const cleanUrl = new URL(cleanPath, req.url);
       cleanUrl.search = url.search;
       return NextResponse.redirect(cleanUrl);
+    }
+
+    // 2.0b Public Tracking Portal & Embed Widget (NO LOGIN REQUIRED)
+    if (pathname === "/track" || pathname.startsWith("/track/")) {
+      requestHeaders.set("x-portal-type", "tenant-tracking");
+      requestHeaders.set("x-tenant-subdomain", subdomain);
+      const targetUrl = new URL(`/${subdomain}${pathname}`, req.url);
+      targetUrl.search = url.search;
+      return NextResponse.rewrite(targetUrl, {
+        request: { headers: requestHeaders },
+      });
     }
 
     // Authorized if user is SUPERADMIN or user's tenant subdomain matches this subdomain
@@ -171,14 +190,36 @@ export async function middleware(req: NextRequest) {
       const rest = pathname.replace(/^\/demo2/, "") || "/";
       return NextResponse.redirect(new URL(`https://demo2.${ROOT_DOMAIN}${rest}`));
     }
+
+    if (pathname === "/track" || pathname.startsWith("/track/")) {
+      const tenantParam = url.searchParams.get("tenant") || "demo1";
+      return NextResponse.redirect(new URL(`https://${tenantParam}.${ROOT_DOMAIN}${pathname}${url.search}`));
+    }
   }
 
   requestHeaders.set("x-portal-type", "public");
-  return NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
   });
+
+  // Capture ?ref=CODE for B2B SaaS Affiliate Tracking
+  const refCode = url.searchParams.get("ref")?.trim();
+  if (refCode && refCode.length > 0 && refCode.length <= 50) {
+    const domain = getSessionCookieDomain(host);
+    response.cookies.set({
+      name: "sf_affiliate_ref",
+      value: refCode.toUpperCase(),
+      maxAge: 60 * 24 * 60 * 60, // 60 days
+      path: "/",
+      domain,
+      sameSite: "lax",
+      httpOnly: false, // Accessible to client-side scripts to prefill forms
+    });
+  }
+
+  return response;
 }
 
 export const config = {

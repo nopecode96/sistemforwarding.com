@@ -96,6 +96,8 @@ interface MasterDataViewProps {
   prefixes: any[];
   currencies: any[];
   provinces: ProvinceData[];
+  globalCarriers?: any[];
+  dictionaries?: any[];
 }
 
 export function MasterDataView({
@@ -108,6 +110,8 @@ export function MasterDataView({
   prefixes: initialPrefixes,
   currencies: initialCurrencies,
   provinces: initialProvinces,
+  globalCarriers: initialCarriers = [],
+  dictionaries: initialDictionaries = [],
 }: MasterDataViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -126,6 +130,8 @@ export function MasterDataView({
   const [prefixes, setPrefixes] = useState(initialPrefixes);
   const [currencies, setCurrencies] = useState(initialCurrencies);
   const [provinces, setProvinces] = useState(initialProvinces);
+  const [carriers, setCarriers] = useState(initialCarriers);
+  const [dictionaries, setDictionaries] = useState(initialDictionaries);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [unitCategoryFilter, setUnitCategoryFilter] = useState<string>("ALL");
@@ -190,6 +196,20 @@ export function MasterDataView({
       count: currencies.length,
       icon: DollarSign,
       badge: "Forex",
+    },
+    {
+      id: "carrier",
+      label: "Carrier Global (SCAC & IATA)",
+      count: carriers.length,
+      icon: Ship,
+      badge: `${carriers.length} Pelayaran & Maskapai`,
+    },
+    {
+      id: "dictionary",
+      label: "Kamus & Standar Sistem",
+      count: dictionaries.length,
+      icon: Layers,
+      badge: `${dictionaries.length} Entri`,
     },
   ];
 
@@ -1296,6 +1316,184 @@ export function MasterDataView({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* TAB 7: GLOBAL CARRIERS (SHIPPING LINES & AIRLINES SCAC / IATA) */}
+      {/* ==================================================================== */}
+      {activeTab === "carrier" && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-[#121620] border border-slate-200/80 dark:border-white/[0.08] shadow-xs">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Ship className="h-4 w-4 text-violet-600" />
+                <span>Katalog Garis Pelayaran &amp; Maskapai Kargo Global</span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Kamus referensi resmi standard kode SCAC (Ocean Lines) dan IATA (Airlines) sedunia.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {carriers
+              .filter((c) => {
+                if (!searchQuery.trim()) return true;
+                const q = searchQuery.toLowerCase();
+                return (
+                  c.carrierCode.toLowerCase().includes(q) ||
+                  c.carrierName.toLowerCase().includes(q) ||
+                  (c.scacCode && c.scacCode.toLowerCase().includes(q)) ||
+                  (c.iataCode && c.iataCode.toLowerCase().includes(q)) ||
+                  (c.country && c.country.toLowerCase().includes(q))
+                );
+              })
+              .map((c) => (
+                <div
+                  key={c.id}
+                  className="bg-white dark:bg-[#121620] rounded-2xl border border-slate-200/80 dark:border-white/[0.08] p-4 shadow-xs hover:border-violet-500/40 transition-all space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className={`h-9 w-9 rounded-xl flex items-center justify-center font-bold text-xs ${
+                          c.mode === "AIR"
+                            ? "bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-300"
+                            : "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300"
+                        }`}
+                      >
+                        {c.mode === "AIR" ? <Plane className="h-4 w-4" /> : <Ship className="h-4 w-4" />}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-xs font-black text-violet-600 dark:text-violet-400">
+                            {c.carrierCode}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300">
+                            {c.mode === "AIR" ? "Air Cargo" : "Ocean Line"}
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-0.5 line-clamp-1">
+                          {c.carrierName}
+                        </h4>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-slate-100 dark:border-white/[0.06]">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block uppercase">
+                        {c.mode === "AIR" ? "Kode IATA" : "Kode SCAC"}
+                      </span>
+                      <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                        {c.scacCode || c.iataCode || "-"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block uppercase">Negara Asal</span>
+                      <span className="font-medium text-slate-700 dark:text-slate-300">
+                        {c.country || "Internasional"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {c.website && (
+                    <div className="pt-2 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between text-[11px]">
+                      <a
+                        href={c.website}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1 text-[11px] font-medium"
+                      >
+                        <span>Situs Resmi</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                      <span className="text-[10px] text-emerald-600 font-bold">Terverifikasi</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* TAB 8: SYSTEM DICTIONARIES (KLASIFIKASI & STANDAR FORWARDING) */}
+      {/* ==================================================================== */}
+      {activeTab === "dictionary" && (
+        <div className="space-y-5">
+          <div className="p-4 rounded-2xl bg-white dark:bg-[#121620] border border-slate-200/80 dark:border-white/[0.08] shadow-xs">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Layers className="h-4 w-4 text-violet-600" />
+              <span>Kamus Istilah &amp; Standar Operasional Forwarding</span>
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Standarisasi kode klasifikasi pelanggan, pihak penagihan (billing party), dan kategori armada yang berlaku di seluruh modul platform.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from(new Set(dictionaries.map((d: any) => d.category))).map((cat) => {
+              const items = dictionaries.filter((d: any) => d.category === cat);
+              const catTitle =
+                cat === "CUSTOMER_TYPE"
+                  ? "Klasifikasi Pelanggan & Mitra"
+                  : cat === "BILLING_PARTY_TYPE"
+                  ? "Pihak Tertagih (Billing Party)"
+                  : cat === "CARRIER_CATEGORY"
+                  ? "Kategori Carrier & Penyedia Jasa"
+                  : cat === "INCOTERM"
+                  ? "Syarat Perdagangan (Incoterms 2020)"
+                  : cat === "PACKAGE_TYPE"
+                  ? "Tipe Kemasan & Kontainer"
+                  : cat;
+
+              return (
+                <div
+                  key={cat as string}
+                  className="bg-white dark:bg-[#121620] rounded-2xl border border-slate-200/80 dark:border-white/[0.08] p-4 shadow-xs space-y-3"
+                >
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                        {catTitle}
+                      </h4>
+                      <span className="text-[10px] font-mono text-violet-600 dark:text-violet-400">
+                        {cat as string}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300">
+                      {items.length} Opsi
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                    {items.map((item: any) => (
+                      <div
+                        key={item.id}
+                        className="flex items-start justify-between gap-2 p-2 rounded-xl bg-slate-50 dark:bg-white/[0.03] text-xs"
+                      >
+                        <div>
+                          <span className="font-mono text-[10px] font-bold text-slate-700 dark:text-slate-300 block">
+                            {item.code}
+                          </span>
+                          <span className="text-[11px] text-slate-600 dark:text-slate-400">
+                            {item.label}
+                          </span>
+                        </div>
+                        {item.isDefault && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 shrink-0">
+                            Default
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

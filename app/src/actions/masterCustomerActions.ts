@@ -2,10 +2,12 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { CustomerType } from "@prisma/client";
 
 export interface CustomerFormData {
   customerCode?: string;
   name: string;
+  customerType?: CustomerType;
   contactPerson?: string;
   email?: string;
   phone?: string;
@@ -99,6 +101,7 @@ export async function getTenantCustomers(
       id: c.id,
       customerCode: c.customerCode,
       name: c.name,
+      customerType: c.customerType,
       contactPerson: c.contactPerson || "-",
       email: c.email || "-",
       phone: c.phone || "-",
@@ -206,6 +209,7 @@ export async function createTenantCustomer(
         tenantId: tenant.id,
         customerCode,
         name: data.name.trim(),
+        customerType: data.customerType || "DIRECT_SHIPPER",
         contactPerson: data.contactPerson?.trim() || null,
         email: data.email?.trim() || null,
         phone: data.phone?.trim() || null,
@@ -265,6 +269,7 @@ export async function updateTenantCustomer(
       where: { id: customerId },
       data: {
         ...(data.name ? { name: data.name.trim() } : {}),
+        ...(data.customerType ? { customerType: data.customerType } : {}),
         ...(data.contactPerson !== undefined ? { contactPerson: data.contactPerson?.trim() || null } : {}),
         ...(data.email !== undefined ? { email: data.email?.trim() || null } : {}),
         ...(data.phone !== undefined ? { phone: data.phone?.trim() || null } : {}),

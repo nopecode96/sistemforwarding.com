@@ -448,6 +448,11 @@ export interface InvoicePDFProps {
   };
   operational: {
     jobFileNumber: string;
+    customerRefNo?: string | null;
+    shippingInstructionNo?: string | null;
+    commercialInvoiceNo?: string | null;
+    billingPartyType?: string | null;
+    billingPartyName?: string | null;
     houseBl: string;
     masterBl: string;
     bizMode: string;
@@ -524,7 +529,14 @@ export function InvoicePDFDocument({ tenant, invoice, customer, operational, ite
               <Text style={{ fontSize: 7, color: "#64748b" }}>ID: {customer.customerCode}</Text>
             </View>
             <View style={styles.boxBody}>
-              <Text style={styles.partyName}>{customer.name}</Text>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 2 }}>
+                <Text style={[styles.partyName, { flex: 1 }]}>{customer.name}</Text>
+                {operational?.billingPartyType && (
+                  <Text style={{ fontSize: 6.5, fontFamily: "Helvetica-Bold", color: "#4338ca", backgroundColor: "#eef2ff", padding: "1.5 4", borderRadius: 2 }}>
+                    {operational.billingPartyType === "FORWARDER_PARTNER" ? "MITRA FORWARDER" : operational.billingPartyType}
+                  </Text>
+                )}
+              </View>
               <Text style={styles.partyAddress}>{customer.address}</Text>
               <Text style={styles.partyVat}>VAT NO / NPWP: {customer.taxId}</Text>
               <Text style={styles.partyAttn}>
@@ -602,8 +614,8 @@ export function InvoicePDFDocument({ tenant, invoice, customer, operational, ite
             </View>
           </View>
 
-          {/* Row 2: POL, POD, Vessel/Flight, Container, Cargo Specs */}
-          <View style={styles.opRowLast}>
+          {/* Row 2: POL, POD, Vessel/Flight, Cargo Specs */}
+          <View style={styles.opRow}>
             <View style={[styles.opCell, { width: "25%" }]}>
               <Text style={styles.opLabel}>POL (Port of Loading)</Text>
               <Text style={styles.opValue}>{pol}</Text>
@@ -620,6 +632,42 @@ export function InvoicePDFDocument({ tenant, invoice, customer, operational, ite
               <Text style={styles.opLabel}>GWT / CWT / CBM / QTY</Text>
               <Text style={styles.opValue}>
                 {operational?.gwt} / {operational?.cwt} / {operational?.cbm} / {operational?.qty}
+              </Text>
+            </View>
+          </View>
+
+          {/* Row 3: Customer / Broker Ref, Shipping Instruction, Commercial Invoice, Billing Party Role */}
+          <View style={styles.opRowLast}>
+            <View style={[styles.opCell, { width: "30%" }]}>
+              <Text style={styles.opLabel}>CUSTOMER / BROKER REF NO.</Text>
+              <Text style={[styles.opValue, { color: "#4338ca" }]}>
+                {operational?.customerRefNo || "-"}
+              </Text>
+            </View>
+            <View style={[styles.opCell, { width: "25%" }]}>
+              <Text style={styles.opLabel}>SHIPPING INSTRUCTION (SI)</Text>
+              <Text style={styles.opValue}>
+                {operational?.shippingInstructionNo || "-"}
+              </Text>
+            </View>
+            <View style={[styles.opCell, { width: "25%" }]}>
+              <Text style={styles.opLabel}>COMMERCIAL INVOICE (CI)</Text>
+              <Text style={styles.opValue}>
+                {operational?.commercialInvoiceNo || "-"}
+              </Text>
+            </View>
+            <View style={[styles.opCellLast, { width: "20%" }]}>
+              <Text style={styles.opLabel}>BILLING ROLE</Text>
+              <Text style={[styles.opValue, { fontSize: 7 }]}>
+                {operational?.billingPartyType === "SHIPPER"
+                  ? "SHIPPER (PREPAID)"
+                  : operational?.billingPartyType === "CONSIGNEE"
+                  ? "CONSIGNEE (COLLECT)"
+                  : operational?.billingPartyType === "FORWARDER_PARTNER"
+                  ? "MITRA FORWARDER"
+                  : operational?.billingPartyType === "THIRD_PARTY"
+                  ? "THIRD PARTY"
+                  : "DIRECT"}
               </Text>
             </View>
           </View>

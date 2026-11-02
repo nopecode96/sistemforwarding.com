@@ -204,11 +204,12 @@ export async function generateInvoice(
       return { success: false, error: "Parameter jobFileId wajib disertakan." };
     }
 
-    // 1. Fetch JobFile with customer details
+    // 1. Fetch JobFile with customer & billing party details
     const jobFile = await prisma.jobFile.findUnique({
       where: { id: jobFileId },
       include: {
         customer: true,
+        billingParty: true,
         tenant: true,
       },
     });
@@ -218,9 +219,14 @@ export async function generateInvoice(
     }
 
     const tenantId = jobFile.tenantId;
+    const billedCustomer = jobFile.billingParty || jobFile.customer;
+    const billedCustomerId = billedCustomer.id;
 
-    // 2. Build cargo summary snapshot
+    // 2. Build cargo summary snapshot with reference numbers
     const cargoDetails = [
+      jobFile.customerRefNo ? `Ref: ${jobFile.customerRefNo}` : null,
+      jobFile.shippingInstructionNo ? `SI: ${jobFile.shippingInstructionNo}` : null,
+      jobFile.commercialInvoiceNo ? `CI: ${jobFile.commercialInvoiceNo}` : null,
       jobFile.containerSummary,
       `${jobFile.packageCount || 1} ${jobFile.packageType || "PKG"}`,
       jobFile.grossWeightKg ? `${jobFile.grossWeightKg} Kgs` : null,
@@ -240,8 +246,8 @@ export async function generateInvoice(
     const totalAmount = subtotal + taxAmount;
     const taxId = defaultTax ? defaultTax.id : null;
 
-    // Due date (default 30 days or based on customer paymentTermDays)
-    const termDays = jobFile.customer.paymentTermDays || 30;
+    // Due date (default 30 days or based on billed customer paymentTermDays)
+    const termDays = billedCustomer.paymentTermDays || 30;
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + termDays);
 
@@ -295,7 +301,7 @@ export async function generateInvoice(
           tenantId,
           invoiceNumber,
           jobFileId: jobFile.id,
-          customerId: jobFile.customerId,
+          customerId: billedCustomerId,
           invoiceDate: new Date(),
           dueDate,
           currency: jobFile.currency || "IDR",

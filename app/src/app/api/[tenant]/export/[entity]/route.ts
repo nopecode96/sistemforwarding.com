@@ -31,6 +31,57 @@ function formatDate(date: Date | null | undefined): string {
   });
 }
 
+function formatCustomerType(type: string | null | undefined): string {
+  switch (type) {
+    case "DIRECT_SHIPPER":
+      return "Eksportir / Shipper";
+    case "DIRECT_CONSIGNEE":
+      return "Importir / Consignee";
+    case "FORWARDER_PARTNER":
+      return "Mitra Forwarder (Broker)";
+    case "OVERSEAS_AGENT":
+      return "Agen Luar Negeri";
+    default:
+      return "Umum / Shipper";
+  }
+}
+
+function formatVendorCategory(category: string | null | undefined): string {
+  switch (category) {
+    case "SHIPPING_LINE":
+      return "Pelayaran (Ocean Carrier)";
+    case "AIRLINE":
+      return "Maskapai (Air Carrier)";
+    case "TRUCKING":
+      return "Trucking / Darat";
+    case "CFS_WAREHOUSE":
+      return "Gudang CFS";
+    case "PORT_TERMINAL":
+      return "Terminal Pelabuhan";
+    case "DEPOT":
+      return "Depo Kontainer";
+    case "CUSTOMS_BROKER":
+      return "PPJK / Kepabeanan";
+    default:
+      return category || "Lainnya";
+  }
+}
+
+function formatBillingPartyType(type: string | null | undefined): string {
+  switch (type) {
+    case "SHIPPER":
+      return "Shipper (Prepaid)";
+    case "CONSIGNEE":
+      return "Consignee (Collect)";
+    case "FORWARDER_PARTNER":
+      return "Mitra Forwarder (Broker)";
+    case "THIRD_PARTY":
+      return "Pihak Ketiga Tertunjuk";
+    default:
+      return type || "Shipper (Prepaid)";
+  }
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ tenant: string; entity: string }> }
@@ -72,10 +123,12 @@ export async function GET(
     const headers = [
       "Kode Customer",
       "Nama Perusahaan",
+      "Kategori / Tipe",
       "NPWP / Tax ID",
       "PIC / Kontak",
       "Email",
       "No. Telepon",
+      "Kota & Negara",
       "Alamat",
       "TOP (Hari)",
       "Limit Piutang",
@@ -87,10 +140,12 @@ export async function GET(
     sheet.columns = [
       { key: "code", width: 14 },
       { key: "name", width: 30 },
+      { key: "type", width: 24 },
       { key: "taxId", width: 22 },
       { key: "pic", width: 22 },
       { key: "email", width: 28 },
       { key: "phone", width: 18 },
+      { key: "location", width: 22 },
       { key: "address", width: 35 },
       { key: "top", width: 12 },
       { key: "limit", width: 20 },
@@ -98,13 +153,16 @@ export async function GET(
       { key: "createdAt", width: 16 },
     ];
     customers.forEach((c, i) => {
+      const location = [c.city, c.country || "ID"].filter(Boolean).join(", ") || "-";
       const r = sheet.addRow([
         c.customerCode,
         c.name,
+        formatCustomerType(c.customerType),
         c.taxId || "-",
         c.contactPerson || "-",
         c.email || "-",
         c.phone || "-",
+        location,
         c.address || "-",
         c.paymentTermDays ?? 30,
         formatIDR(Number(c.creditLimit || 0)),
@@ -126,15 +184,17 @@ export async function GET(
       orderBy: { createdAt: "desc" },
     });
 
-    const sheet = workbook.addWorksheet("Vendors");
+    const sheet = workbook.addWorksheet("Vendors & Carriers");
     const headers = [
       "Kode Vendor",
-      "Nama Vendor",
-      "Kategori",
+      "Nama Vendor / Carrier",
+      "Kategori / Layanan",
+      "Kode IATA / SCAC",
       "NPWP",
       "PIC / Kontak",
       "Email",
       "No. Telepon",
+      "Kota & Negara",
       "Status",
       "Tgl. Daftar",
     ];
@@ -143,23 +203,28 @@ export async function GET(
     sheet.columns = [
       { key: "code", width: 14 },
       { key: "name", width: 30 },
-      { key: "category", width: 18 },
+      { key: "category", width: 24 },
+      { key: "iataPrefix", width: 18 },
       { key: "taxId", width: 22 },
       { key: "pic", width: 22 },
       { key: "email", width: 28 },
       { key: "phone", width: 18 },
+      { key: "location", width: 22 },
       { key: "status", width: 12 },
       { key: "createdAt", width: 16 },
     ];
     vendors.forEach((v, i) => {
+      const location = [v.city, v.country || "ID"].filter(Boolean).join(", ") || "-";
       const r = sheet.addRow([
         v.vendorCode || "-",
         v.name,
-        v.category || "-",
+        formatVendorCategory(v.category),
+        v.iataPrefix || "-",
         v.taxId || "-",
         v.contactPerson || "-",
         v.email || "-",
         v.phone || "-",
+        location,
         v.isActive ? "Aktif" : "Nonaktif",
         formatDate(v.createdAt),
       ]);
@@ -168,7 +233,7 @@ export async function GET(
       }
     });
     sheet.addRow([]);
-    sheet.addRow([`Total: ${vendors.length} vendors`]);
+    sheet.addRow([`Total: ${vendors.length} vendors & carriers`]);
   }
 
   // ── JOBS ─────────────────────────────────────────────────────────────────
@@ -177,6 +242,7 @@ export async function GET(
       where: { tenantId },
       include: {
         customer: { select: { name: true, customerCode: true } },
+        billingParty: { select: { name: true, customerCode: true } },
         vendor: { select: { name: true } },
         incotermRef: { select: { code: true } },
       },
@@ -191,6 +257,12 @@ export async function GET(
       "Moda",
       "Bound",
       "Customer",
+      "Ref. Job / PO Klien (Broker)",
+      "No. Shipping Instruction (SI)",
+      "No. Commercial Invoice (CI)",
+      "Pihak Tertagih (Billing Party)",
+      "Role Penagihan",
+      "Consignee (Penerima)",
       "Vendor / Carrier",
       "POL",
       "POD",
@@ -209,8 +281,14 @@ export async function GET(
     row1.eachCell(headerStyle);
     sheet.columns = Array(headers.length).fill({ width: 18 });
     sheet.getColumn(1).width = 22;
-    sheet.getColumn(5).width = 14;
+    sheet.getColumn(6).width = 28;
+    sheet.getColumn(7).width = 25;
     sheet.getColumn(8).width = 25;
+    sheet.getColumn(9).width = 25;
+    sheet.getColumn(10).width = 28;
+    sheet.getColumn(11).width = 22;
+    sheet.getColumn(12).width = 25;
+    sheet.getColumn(13).width = 25;
 
     jobs.forEach((j, i) => {
       const selling = Number(j.sellingAmount) || 0;
@@ -219,6 +297,7 @@ export async function GET(
       const margin = selling > 0 ? ((profit / selling) * 100).toFixed(1) + "%" : "0%";
 
       const blAwb = j.houseBillOfLading || j.masterBillOfLading || "-";
+      const billingPartyName = j.billingParty?.name || j.customer.name;
 
       const r = sheet.addRow([
         j.jobFileNumber,
@@ -227,6 +306,12 @@ export async function GET(
         j.bizMode || j.transportMode,
         j.bound || j.shipmentType,
         j.customer.name,
+        j.customerRefNo || "-",
+        j.shippingInstructionNo || "-",
+        j.commercialInvoiceNo || "-",
+        billingPartyName,
+        formatBillingPartyType(j.billingPartyType),
+        j.consigneeName || "-",
         j.vendor?.name || "-",
         j.originPort || "-",
         j.destinationPort || "-",
@@ -248,7 +333,7 @@ export async function GET(
     sheet.addRow([]);
     sheet.addRow([
       `Total: ${jobs.length} job files`,
-      "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+      "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
       `Rp ${formatIDR(jobs.reduce((s, j) => s + Number(j.sellingAmount), 0))}`,
       `Rp ${formatIDR(jobs.reduce((s, j) => s + Number(j.buyingAmount), 0))}`,
       `Rp ${formatIDR(jobs.reduce((s, j) => s + (Number(j.sellingAmount) - Number(j.buyingAmount)), 0))}`,
@@ -261,7 +346,15 @@ export async function GET(
       where: { tenantId },
       include: {
         customer: { select: { name: true, customerCode: true } },
-        jobFile: { select: { jobFileNumber: true } },
+        jobFile: {
+          select: {
+            jobFileNumber: true,
+            customerRefNo: true,
+            shippingInstructionNo: true,
+            commercialInvoiceNo: true,
+            billingPartyType: true,
+          },
+        },
         tax: { select: { taxName: true, taxRatePercent: true } },
       },
       orderBy: { invoiceDate: "desc" },
@@ -273,11 +366,15 @@ export async function GET(
       "Tgl. Invoice",
       "Jatuh Tempo",
       "Status",
-      "Customer",
+      "Customer / Pihak Tertagih",
+      "Role Penagihan",
       "Ref. Job File",
+      "Ref. PO Klien / Broker",
+      "No. Shipping Instruction (SI)",
+      "No. Commercial Invoice (CI)",
       "Mata Uang",
-      "Subtotal",
-      "Pajak",
+      "Subtotal (DPP)",
+      "Pajak PPN",
       "Total Tagihan",
       "Tgl. Lunas",
       "Metode Bayar",
@@ -290,7 +387,11 @@ export async function GET(
       { key: "dueDate", width: 16 },
       { key: "status", width: 12 },
       { key: "customer", width: 30 },
+      { key: "billingRole", width: 22 },
       { key: "jobFile", width: 22 },
+      { key: "clientRef", width: 25 },
+      { key: "siNo", width: 25 },
+      { key: "ciNo", width: 25 },
       { key: "currency", width: 12 },
       { key: "subtotal", width: 20 },
       { key: "tax", width: 18 },
@@ -313,7 +414,11 @@ export async function GET(
         formatDate(inv.dueDate),
         isOverdue ? "OVERDUE" : inv.status,
         inv.customer.name,
+        formatBillingPartyType(inv.jobFile?.billingPartyType),
         inv.jobFile?.jobFileNumber || "-",
+        inv.jobFile?.customerRefNo || "-",
+        inv.jobFile?.shippingInstructionNo || "-",
+        inv.jobFile?.commercialInvoiceNo || "-",
         inv.currency,
         formatIDR(Number(inv.subtotal)),
         formatIDR(Number(inv.taxAmount)),
@@ -334,7 +439,7 @@ export async function GET(
     sheet.addRow([]);
     const summaryRow = sheet.addRow([
       `Total: ${invoices.length} invoices`,
-      "", "", "", "", "", "",
+      "", "", "", "", "", "", "", "", "", "",
       "", "",
       `Rp ${formatIDR(totalAmount)}`,
     ]);

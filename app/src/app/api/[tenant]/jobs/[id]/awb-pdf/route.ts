@@ -177,6 +177,10 @@ export async function GET(
         insuranceAmount: job.insuranceAmount || "NIL",
         handlingInformation: job.handlingInformation || null,
         vendorIataPrefix: job.vendor?.iataPrefix || null,
+        customerRefNo: job.customerRefNo || null,
+        shippingInstructionNo: job.shippingInstructionNo || null,
+        commercialInvoiceNo: job.commercialInvoiceNo || null,
+        billingPartyType: job.billingPartyType?.toString() || null,
         invoice: latestInvoice
           ? {
               invoiceNumber: latestInvoice.invoiceNumber,

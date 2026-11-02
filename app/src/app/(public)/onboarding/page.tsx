@@ -1,7 +1,10 @@
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 import { Suspense } from "react";
 import { OnboardingWizard } from "@/components/public/OnboardingWizard";
+import { getActivePlans } from "@/actions/planActions";
 
 interface OnboardingPageProps {
   searchParams: Promise<{
@@ -12,9 +15,13 @@ interface OnboardingPageProps {
 async function OnboardingContent({ searchParams }: OnboardingPageProps) {
   const { plan } = await searchParams;
   const initialPlan =
-    plan === "monthly" || plan === "yearly" ? (plan as "monthly" | "yearly") : "trial";
+    plan === "monthly" || plan === "yearly" || plan === "pay_per_job"
+      ? (plan as "trial" | "monthly" | "yearly" | "pay_per_job")
+      : "trial";
 
-  return <OnboardingWizard initialPlan={initialPlan} />;
+  const dynamicPlans = await getActivePlans();
+
+  return <OnboardingWizard initialPlan={initialPlan} dynamicPlans={dynamicPlans} />;
 }
 
 export default function OnboardingPage(props: OnboardingPageProps) {

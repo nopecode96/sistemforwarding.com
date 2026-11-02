@@ -83,13 +83,31 @@ export function NewJobFileForm({ initialData }: NewJobFileFormProps) {
   // Transform PostgreSQL Master Data into SearchableSelect Options
   const customerOptions: SearchOption[] = useMemo(
     () =>
-      customers.map((c) => ({
-        value: c.id,
-        label: c.name,
-        badge: c.customerCode,
-        badgeColor: "blue",
-        category: "Pelanggan Terdaftar",
-      })),
+      customers.map((c) => {
+        let catLabel = "Pelanggan Terdaftar";
+        let color: "blue" | "emerald" | "violet" | "amber" | "slate" = "blue";
+        if (c.customerType === "FORWARDER_PARTNER") {
+          catLabel = "Mitra Forwarder (Broker)";
+          color = "violet";
+        } else if (c.customerType === "DIRECT_CONSIGNEE") {
+          catLabel = "Importir / Consignee";
+          color = "blue";
+        } else if (c.customerType === "DIRECT_SHIPPER") {
+          catLabel = "Eksportir / Shipper";
+          color = "emerald";
+        } else if (c.customerType === "OVERSEAS_AGENT") {
+          catLabel = "Agen Luar Negeri";
+          color = "amber";
+        }
+        return {
+          value: c.id,
+          label: c.name,
+          badge: c.customerCode,
+          badgeColor: color,
+          sublabel: c.taxId ? `NPWP: ${c.taxId} • ${catLabel}` : catLabel,
+          category: catLabel,
+        };
+      }),
     [customers]
   );
 
@@ -100,7 +118,17 @@ export function NewJobFileForm({ initialData }: NewJobFileFormProps) {
         label: v.name,
         badge: v.category,
         badgeColor: "violet",
-        category: v.category,
+        sublabel: `Penyedia Jasa (${v.category})`,
+        category:
+          v.category === "CARRIER_SEA"
+            ? "Pelayaran Laut (Ocean Carrier)"
+            : v.category === "CARRIER_AIR"
+            ? "Maskapai Kargo Udara (Air Carrier)"
+            : v.category === "HAULAGE_TRUCK"
+            ? "Armada Truk Darat (Haulage)"
+            : v.category === "CUSTOMS_BROKER"
+            ? "PPJK & Kepabeanan"
+            : "Carrier & Mitra Logistik",
       })),
     [vendors]
   );
@@ -386,12 +414,104 @@ export function NewJobFileForm({ initialData }: NewJobFileFormProps) {
             <div>
               <SearchableSelect
                 name="vendorId"
-                label="Vendor / Carrier (Sisi Buying)"
+                label="Carrier &amp; Penyedia Jasa (Sisi Buying / AP)"
                 options={vendorOptions}
-                placeholder="-- Pilih Vendor Carrier --"
-                searchPlaceholder="Cari vendor kapal / trucking..."
-                emptyMessage="Vendor tidak ditemukan. Tambahkan di menu Master."
+                placeholder="-- Pilih Carrier / Transporter --"
+                searchPlaceholder="Cari pelayaran, maskapai, trucking..."
+                emptyMessage="Carrier tidak ditemukan. Tambahkan di menu Carrier &amp; Mitra."
               />
+            </div>
+          </div>
+
+          {/* Sub-Panel: Dokumen Permintaan & Referensi Klien (Broker & Direct) */}
+          <div className="pt-4 border-t border-slate-100 dark:border-white/[0.08] space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5 text-blue-600" />
+                <span>Dokumen Permintaan &amp; Referensi Klien (Broker &amp; Direct)</span>
+              </span>
+              <span className="text-[10px] text-slate-400">Dasar Alur Kerja Forwarding</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  No. Ref Klien / Job Order Mitra
+                </label>
+                <input
+                  type="text"
+                  name="customerRefNo"
+                  placeholder="Contoh: FWD-JKT-2026-089 atau PO-102"
+                  className="w-full border border-slate-300 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white bg-white dark:bg-[#1a2130] focus:outline-none focus:border-violet-500 font-mono"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">Wajib diisi jika order limpahan dari perusahaan forwarder rekanan.</p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  No. Shipping Instruction (SI)
+                </label>
+                <input
+                  type="text"
+                  name="shippingInstructionNo"
+                  placeholder="Contoh: SI/2026/10/004"
+                  className="w-full border border-slate-300 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white bg-white dark:bg-[#1a2130] focus:outline-none focus:border-violet-500 font-mono"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">Instruksi resmi dari Shipper / Eksportir.</p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  No. Commercial Invoice (CI) / PL
+                </label>
+                <input
+                  type="text"
+                  name="commercialInvoiceNo"
+                  placeholder="Contoh: INV-EXP-2026-042"
+                  className="w-full border border-slate-300 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white bg-white dark:bg-[#1a2130] focus:outline-none focus:border-violet-500 font-mono"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">Faktur komersial muatan barang.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Sub-Panel: Penetapan Pihak Tertagih (Billing Party & Tax Entity) */}
+          <div className="pt-4 border-t border-slate-100 dark:border-white/[0.08] space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <CreditCard className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Pihak Tertagih (Billing Party &amp; Faktur Pajak PPN 1.1%)</span>
+              </span>
+              <span className="text-[10px] text-slate-400">Kepatuhan PMK 71/2022</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Tagihan Diarahkan Kepada (Billing Party Role)
+                </label>
+                <select
+                  name="billingPartyType"
+                  className="w-full border border-slate-300 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white bg-white dark:bg-[#1a2130] focus:outline-none focus:border-violet-500 font-medium"
+                >
+                  <option value="SHIPPER">Shipper / Eksportir (Freight Prepaid - Default)</option>
+                  <option value="CONSIGNEE">Consignee / Importir (Freight Collect)</option>
+                  <option value="FORWARDER_PARTNER">Perusahaan Forwarder Mitra (B2B Brokerage)</option>
+                  <option value="THIRD_PARTY">Pihak Ketiga Tertunjuk / Agen</option>
+                </select>
+                <p className="text-[10px] text-slate-400 mt-0.5">Menentukan entitas mana yang akan dicantumkan di Invoice AR.</p>
+              </div>
+
+              <div>
+                <SearchableSelect
+                  name="billingPartyId"
+                  label="Pilih Entitas Tertagih Khusus (Opsional jika beda dari Customer)"
+                  options={customerOptions}
+                  placeholder="-- Default: Sama dengan Customer di atas --"
+                  searchPlaceholder="Cari customer / forwarder mitra..."
+                  emptyMessage="Customer tidak ditemukan."
+                />
+              </div>
             </div>
           </div>
 

@@ -31,6 +31,7 @@ import {
   deleteTenantCustomer,
   CustomerFormData,
 } from "@/actions/masterCustomerActions";
+import { CustomerType } from "@prisma/client";
 
 interface GeographicalHierarchy {
   id: string;
@@ -50,6 +51,7 @@ interface CustomerItem {
   id: string;
   customerCode: string;
   name: string;
+  customerType?: CustomerType;
   contactPerson: string;
   email: string;
   phone: string;
@@ -90,6 +92,17 @@ function formatIDR(amount: number): string {
   }).format(amount);
 }
 
+export const CUSTOMER_TYPE_CONFIG: Record<
+  string,
+  { label: string; badgeColor: string }
+> = {
+  DIRECT_SHIPPER: { label: "Eksportir / Shipper", badgeColor: "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-500/30" },
+  DIRECT_CONSIGNEE: { label: "Importir / Consignee", badgeColor: "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200/60 dark:border-blue-500/30" },
+  FORWARDER_PARTNER: { label: "Mitra Forwarder (Broker)", badgeColor: "bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border-violet-200/60 dark:border-violet-500/30" },
+  OVERSEAS_AGENT: { label: "Agen Luar Negeri", badgeColor: "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200/60 dark:border-amber-500/30" },
+  OTHERS: { label: "Pihak Ketiga Lainnya", badgeColor: "bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10" },
+};
+
 export function CustomerCardList({
   tenantSubdomain,
   initialCustomers,
@@ -105,6 +118,7 @@ export function CustomerCardList({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>("ALL");
 
   // Form State
   const [formData, setFormData] = useState<CustomerFormData>({
@@ -130,8 +144,29 @@ export function CustomerCardList({
   // Delete State
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Category counts
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      ALL: customers.length,
+      DIRECT_SHIPPER: 0,
+      DIRECT_CONSIGNEE: 0,
+      FORWARDER_PARTNER: 0,
+      OVERSEAS_AGENT: 0,
+    };
+    for (const c of customers) {
+      const t = c.customerType || "DIRECT_SHIPPER";
+      if (counts[t] !== undefined) counts[t]++;
+    }
+    return counts;
+  }, [customers]);
+
   // Client filtering
   const filteredCustomers = customers.filter((c) => {
+    const matchesType =
+      selectedTypeFilter === "ALL" ||
+      c.customerType === selectedTypeFilter ||
+      (!c.customerType && selectedTypeFilter === "DIRECT_SHIPPER");
+    if (!matchesType) return false;
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -219,6 +254,7 @@ export function CustomerCardList({
     setFormData({
       customerCode: "",
       name: "",
+      customerType: CustomerType.DIRECT_SHIPPER,
       contactPerson: "",
       email: "",
       phone: "",
@@ -244,6 +280,7 @@ export function CustomerCardList({
     setFormData({
       customerCode: customer.customerCode,
       name: customer.name,
+      customerType: customer.customerType || CustomerType.DIRECT_SHIPPER,
       contactPerson: customer.contactPerson !== "-" ? customer.contactPerson : "",
       email: customer.email !== "-" ? customer.email : "",
       phone: customer.phone !== "-" ? customer.phone : "",
@@ -283,6 +320,7 @@ export function CustomerCardList({
             id: res.customerId || `cust-${Date.now()}`,
             customerCode: formData.customerCode || "CUST-NEW",
             name: formData.name,
+            customerType: formData.customerType || CustomerType.DIRECT_SHIPPER,
             contactPerson: formData.contactPerson || "-",
             email: formData.email || "-",
             phone: formData.phone || "-",
@@ -320,6 +358,7 @@ export function CustomerCardList({
                 ? {
                     ...c,
                     name: formData.name,
+                    customerType: formData.customerType || c.customerType,
                     customerCode: formData.customerCode || c.customerCode,
                     contactPerson: formData.contactPerson || "-",
                     email: formData.email || "-",
@@ -418,6 +457,43 @@ export function CustomerCardList({
         </div>
       </div>
 
+      {/* Category Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-2">
+        {[
+          { id: "ALL", label: "Semua Kategori", count: typeCounts.ALL },
+          { id: "DIRECT_SHIPPER", label: "Eksportir / Shipper", count: typeCounts.DIRECT_SHIPPER },
+          { id: "DIRECT_CONSIGNEE", label: "Importir / Consignee", count: typeCounts.DIRECT_CONSIGNEE },
+          { id: "FORWARDER_PARTNER", label: "Mitra Forwarder (Broker)", count: typeCounts.FORWARDER_PARTNER },
+          { id: "OVERSEAS_AGENT", label: "Agen Luar Negeri", count: typeCounts.OVERSEAS_AGENT },
+        ].map((tab) => {
+          const isActive = selectedTypeFilter === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                setSelectedTypeFilter(tab.id);
+                setCurrentPage(1);
+              }}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                isActive
+                  ? "bg-violet-600 text-white shadow-sm"
+                  : "bg-white dark:bg-[#121620] border border-slate-200/80 dark:border-white/[0.08] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5"
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                  isActive ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-white/10 text-slate-500"
+                }`}
+              >
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* ==================================================================== */}
       {/* MOBILE-FIRST CARD-BASED LIST (STRICTLY NO HTML <table> AS PER RULE) */}
       {/* ==================================================================== */}
@@ -454,6 +530,11 @@ export function CustomerCardList({
                       <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300">
                         {customer.customerCode}
                       </span>
+                      {customer.customerType && CUSTOMER_TYPE_CONFIG[customer.customerType] && (
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${CUSTOMER_TYPE_CONFIG[customer.customerType].badgeColor}`}>
+                          {CUSTOMER_TYPE_CONFIG[customer.customerType].label}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
                       Ruang Kerja: <span className="font-mono text-violet-600 dark:text-violet-400">{tenantSubdomain}.sistemforwarding.com</span>
@@ -698,6 +779,29 @@ export function CustomerCardList({
                     placeholder="PT Sumber Ekspor Sejahtera"
                     className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 font-medium"
                   />
+                </div>
+
+                {/* Tipe / Peran Customer */}
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Kategori &amp; Peran Klien <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.customerType || CustomerType.DIRECT_SHIPPER}
+                    onChange={(e) =>
+                      setFormData({ ...formData, customerType: e.target.value as CustomerType })
+                    }
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 font-medium"
+                  >
+                    <option value={CustomerType.DIRECT_SHIPPER}>Eksportir / Shipper Langsung (Direct Cargo Owner)</option>
+                    <option value={CustomerType.DIRECT_CONSIGNEE}>Importir / Consignee Langsung (Direct Buyer)</option>
+                    <option value={CustomerType.FORWARDER_PARTNER}>Mitra Forwarder / Broker (Sub-Order dari Perusahaan Lain)</option>
+                    <option value={CustomerType.OVERSEAS_AGENT}>Agen Forwarder Luar Negeri (Overseas Partner)</option>
+                    <option value={CustomerType.OTHERS}>Pihak Ketiga Lainnya</option>
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Pilih &quot;Mitra Forwarder / Broker&quot; jika klien ini adalah sesama freight forwarder yang melimpahkan job order ke kita.
+                  </p>
                 </div>
 
                 {/* NPWP */}

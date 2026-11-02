@@ -1,8 +1,23 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { createSessionToken, setSessionCookie, clearSessionCookie } from "@/lib/auth";
+import {
+  createSessionToken,
+  setSessionCookie,
+  clearSessionCookie,
+  getCurrentSession,
+} from "@/lib/auth";
+import { recordAuditLog } from "@/actions/adminAuditActions";
 import { headers } from "next/headers";
+
+async function getSafeHostHeader(): Promise<string> {
+  try {
+    const headerList = await headers();
+    return headerList.get("host") || "";
+  } catch {
+    return "";
+  }
+}
 
 /**
  * Server Action for Tenant Client Login (e.g. demo1.sistemforwarding.com/login)
@@ -16,8 +31,7 @@ export async function loginTenantAction(formData: FormData) {
   }
 
   try {
-    const headerList = await headers();
-    const hostHeader = headerList.get("host") || "";
+    const hostHeader = await getSafeHostHeader();
 
     // 1. Look up user by email with tenant relation
     const user = await prisma.user.findFirst({
@@ -39,6 +53,29 @@ export async function loginTenantAction(formData: FormData) {
       };
     }
 
+    // 1.1 Tenant suspension verification (Superadmin can bypass to audit)
+    if (
+      user.role !== "SUPERADMIN" &&
+      user.tenant &&
+      (!user.tenant.isActive || user.tenant.subscriptionStatus === "SUSPENDED")
+    ) {
+      return {
+        success: false,
+        error: "Ruang kerja tenant ini sedang ditangguhkan (SUSPENDED). Silakan hubungi Super Administrator platform.",
+      };
+    }
+
+    // 1.2 Password verification if passwordHash is established
+    const password = (formData.get("password") as string)?.trim();
+    if (user.passwordHash) {
+      if (!password || user.passwordHash !== password) {
+        return {
+          success: false,
+          error: "Kata sandi yang Anda masukkan salah.",
+        };
+      }
+    }
+
     // 2. Validate tenant workspace match
     // Superadmin has universal access to all tenants. Regular users must match the subdomain.
     if (targetSubdomain && user.role !== "SUPERADMIN") {
@@ -55,7 +92,7 @@ export async function loginTenantAction(formData: FormData) {
       userId: user.id,
       email: user.email,
       name: user.name,
-      role: user.role as any,
+      role: user.role as import("@/lib/auth").SessionPayload["role"],
       tenantId: user.tenantId,
       subdomain: user.tenant?.subdomain || targetSubdomain || null,
       companyName: user.tenant?.companyName || null,
@@ -88,8 +125,7 @@ export async function loginAdminAction(formData: FormData) {
   }
 
   try {
-    const headerList = await headers();
-    const hostHeader = headerList.get("host") || "";
+    const hostHeader = await getSafeHostHeader();
 
     const user = await prisma.user.findFirst({
       where: { email },
@@ -109,6 +145,16 @@ export async function loginAdminAction(formData: FormData) {
       };
     }
 
+    const password = (formData.get("password") as string)?.trim();
+    if (user.passwordHash) {
+      if (!password || user.passwordHash !== password) {
+        return {
+          success: false,
+          error: "Kata sandi administrator salah.",
+        };
+      }
+    }
+
     const sessionToken = await createSessionToken({
       userId: user.id,
       email: user.email,
@@ -120,6 +166,17 @@ export async function loginAdminAction(formData: FormData) {
     });
 
     await setSessionCookie(sessionToken, hostHeader);
+
+    await recordAuditLog({
+      operatorId: user.id,
+      operatorName: user.name,
+      operatorEmail: user.email,
+      action: "ADMIN_LOGIN",
+      targetType: "AUTH",
+      targetId: user.id,
+      targetName: user.name,
+      details: { email: user.email, role: user.role },
+    });
 
     return {
       success: true,
@@ -138,8 +195,22 @@ export async function loginAdminAction(formData: FormData) {
  * Server Action for Logout across all portals
  */
 export async function logoutAction() {
-  const headerList = await headers();
-  const hostHeader = headerList.get("host") || "";
+  const hostHeader = await getSafeHostHeader();
+  const session = await getCurrentSession();
+
+  if (session && session.role === "SUPERADMIN") {
+    await recordAuditLog({
+      operatorId: session.userId,
+      operatorName: session.name,
+      operatorEmail: session.email,
+      action: "ADMIN_LOGOUT",
+      targetType: "AUTH",
+      targetId: session.userId,
+      targetName: session.name,
+      details: { email: session.email },
+    });
+  }
+
   await clearSessionCookie(hostHeader);
   return { success: true };
 }

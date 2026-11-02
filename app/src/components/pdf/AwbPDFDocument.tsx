@@ -296,6 +296,10 @@ export interface AwbPDFProps {
     insuranceAmount?: string | null;
     handlingInformation?: string | null;
     vendorIataPrefix?: string | null;
+    customerRefNo?: string | null;
+    shippingInstructionNo?: string | null;
+    commercialInvoiceNo?: string | null;
+    billingPartyType?: string | null;
     invoice: InvoiceSummary | null;
     cargoDetails: CargoDetail[];
   };
@@ -579,6 +583,21 @@ function IataAwbPage({ tenant, job, customer, vendor }: AwbPDFProps) {
               <Text style={[awbStyles.valueText, { fontSize: 6, color: "#64748b" }]}>
                 SMT / JOB FILE: {job.jobFileNumber} | HAWB: {job.houseBlNumber && job.houseBlNumber !== "-" ? job.houseBlNumber : job.blOrAwbNumber}
               </Text>
+              {job.customerRefNo && (
+                <Text style={[awbStyles.valueText, { fontSize: 6, color: "#0f172a" }]}>
+                  CLIENT / BROKER REF: {job.customerRefNo}
+                </Text>
+              )}
+              {job.shippingInstructionNo && (
+                <Text style={[awbStyles.valueText, { fontSize: 6, color: "#0f172a" }]}>
+                  SHIPPING INSTRUCTION (SI): {job.shippingInstructionNo}
+                </Text>
+              )}
+              {job.commercialInvoiceNo && (
+                <Text style={[awbStyles.valueText, { fontSize: 6, color: "#0f172a" }]}>
+                  COMMERCIAL INVOICE (CI): {job.commercialInvoiceNo}
+                </Text>
+              )}
               <Text style={[awbStyles.valueText, { fontSize: 6, color: "#64748b" }]}>
                 INVOICE REF: {job.invoice?.invoiceNumber || "-"}
               </Text>
@@ -1050,6 +1069,21 @@ function OceanBlPage({ tenant, job, customer, vendor }: AwbPDFProps) {
               <Text style={[blStyles.valueText, { fontSize: 6 }]}>
                 EXPORT REF: {job.houseBlNumber !== "-" ? job.houseBlNumber : (job.masterBlNumber !== "-" ? job.masterBlNumber : "-")}
               </Text>
+              {job.customerRefNo && (
+                <Text style={[blStyles.valueText, { fontSize: 6, color: "#1e3a8a" }]}>
+                  BROKER / PO REF: {job.customerRefNo}
+                </Text>
+              )}
+              {job.shippingInstructionNo && (
+                <Text style={[blStyles.valueText, { fontSize: 6, color: "#1e3a8a" }]}>
+                  SHIPPING INSTRUCTION (SI): {job.shippingInstructionNo}
+                </Text>
+              )}
+              {job.commercialInvoiceNo && (
+                <Text style={[blStyles.valueText, { fontSize: 6, color: "#1e3a8a" }]}>
+                  COMMERCIAL INVOICE (CI): {job.commercialInvoiceNo}
+                </Text>
+              )}
             </View>
 
             <View style={[blStyles.box, blStyles.rowBorder, { minHeight: 48 }]}>

@@ -28,16 +28,27 @@ import {
   CheckCircle,
 } from "lucide-react";
 
+import type { PlanItem } from "@/actions/planActions";
+
 interface OnboardingWizardProps {
-  initialPlan?: "trial" | "monthly" | "yearly";
+  initialPlan?: "trial" | "monthly" | "yearly" | "pay_per_job";
+  dynamicPlans?: PlanItem[];
 }
 
-export function OnboardingWizard({ initialPlan = "trial" }: OnboardingWizardProps) {
+export function OnboardingWizard({ initialPlan = "trial", dynamicPlans }: OnboardingWizardProps) {
   // Step: 1 = Google SSO, 2 = Tenant Details, 3 = Confirmation / QRIS
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [selectedPlan, setSelectedPlan] = useState<"trial" | "monthly" | "yearly">(
+  const [selectedPlan, setSelectedPlan] = useState<"trial" | "monthly" | "yearly" | "pay_per_job">(
     initialPlan
   );
+
+  const monthlyPlan = dynamicPlans?.find((p) => p.planKey === "monthly");
+  const yearlyPlan = dynamicPlans?.find((p) => p.planKey === "yearly");
+  const payPerJobPlan = dynamicPlans?.find((p) => p.planKey === "pay_per_job");
+
+  const monthlyPriceStr = monthlyPlan ? `Rp ${monthlyPlan.price.toLocaleString("id-ID")}` : "Rp 1.000.000";
+  const yearlyPriceStr = yearlyPlan ? `Rp ${yearlyPlan.price.toLocaleString("id-ID")}` : "Rp 10.000.000";
+  const payPerJobPriceStr = payPerJobPlan ? `Rp ${payPerJobPlan.price.toLocaleString("id-ID")}` : "Rp 50.000";
 
   // Google User State
   const [googleUser, setGoogleUser] = useState<{
@@ -49,11 +60,32 @@ export function OnboardingWizard({ initialPlan = "trial" }: OnboardingWizardProp
   // Tenant Form State
   const [companyName, setCompanyName] = useState("");
   const [subdomain, setSubdomain] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [availability, setAvailability] = useState<{
     checked: boolean;
     available: boolean;
     message: string;
   } | null>(null);
+
+  // Read ?ref= or cookie sf_affiliate_ref on client load
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlRef = params.get("ref");
+      if (urlRef) {
+        setReferralCode(urlRef.trim().toUpperCase());
+      } else {
+        const match = document.cookie.match(/(?:^|; )sf_affiliate_ref=([^;]*)/);
+        if (match && match[1]) {
+          try {
+            setReferralCode(decodeURIComponent(match[1]).trim().toUpperCase());
+          } catch {
+            setReferralCode(match[1].trim().toUpperCase());
+          }
+        }
+      }
+    }
+  }, []);
 
   const [isCheckingSubdomain, setIsCheckingSubdomain] = useState(false);
   const [isSubmitting, startTransition] = useTransition();
@@ -219,6 +251,7 @@ export function OnboardingWizard({ initialPlan = "trial" }: OnboardingWizardProp
         companyName,
         subdomain,
         plan: selectedPlan,
+        referralCode: referralCode.trim() || undefined,
         user: googleUser,
       });
 
@@ -481,39 +514,39 @@ export function OnboardingWizard({ initialPlan = "trial" }: OnboardingWizardProp
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
                   Pilihan Paket Langganan
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   <button
                     type="button"
                     onClick={() => setSelectedPlan("trial")}
-                    className={`p-3.5 rounded-2xl border text-left transition-all ${
+                    className={`p-3 rounded-2xl border text-left transition-all ${
                       selectedPlan === "trial"
                         ? "border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/30 shadow-sm"
                         : "border-slate-200 hover:bg-slate-50"
                     }`}
                   >
                     <span className="block text-xs font-bold text-slate-900">Trial 7 Hari</span>
-                    <span className="block text-sm font-extrabold text-blue-600 mt-1">Rp 0</span>
-                    <span className="block text-[10px] text-slate-500 mt-0.5">Gratis tanpa kartu kredit</span>
+                    <span className="block text-sm font-extrabold text-blue-600 mt-1">Gratis</span>
+                    <span className="block text-[10px] text-slate-500 mt-0.5">Tanpa kartu kredit</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setSelectedPlan("monthly")}
-                    className={`p-3.5 rounded-2xl border text-left transition-all ${
+                    className={`p-3 rounded-2xl border text-left transition-all ${
                       selectedPlan === "monthly"
                         ? "border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/30 shadow-sm"
                         : "border-slate-200 hover:bg-slate-50"
                     }`}
                   >
                     <span className="block text-xs font-bold text-slate-900">Bulanan</span>
-                    <span className="block text-sm font-extrabold text-blue-600 mt-1">Rp 1.000.000</span>
-                    <span className="block text-[10px] text-slate-500 mt-0.5">Fitur komplit bulanan</span>
+                    <span className="block text-sm font-extrabold text-blue-600 mt-1">{monthlyPriceStr}</span>
+                    <span className="block text-[10px] text-slate-500 mt-0.5">/ bulan</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setSelectedPlan("yearly")}
-                    className={`p-3.5 rounded-2xl border text-left transition-all ${
+                    className={`p-3 rounded-2xl border text-left transition-all ${
                       selectedPlan === "yearly"
                         ? "border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/30 shadow-sm"
                         : "border-slate-200 hover:bg-slate-50"
@@ -521,12 +554,26 @@ export function OnboardingWizard({ initialPlan = "trial" }: OnboardingWizardProp
                   >
                     <div className="flex items-center justify-between">
                       <span className="block text-xs font-bold text-slate-900">Tahunan</span>
-                      <span className="text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
+                      <span className="text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 px-1 py-0.5 rounded">
                         Hemat
                       </span>
                     </div>
-                    <span className="block text-sm font-extrabold text-emerald-600 mt-1">Rp 10.000.000</span>
-                    <span className="block text-[10px] text-slate-500 mt-0.5">Hemat 2 bulan</span>
+                    <span className="block text-sm font-extrabold text-emerald-600 mt-1">{yearlyPriceStr}</span>
+                    <span className="block text-[10px] text-slate-500 mt-0.5">/ tahun</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPlan("pay_per_job")}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      selectedPlan === "pay_per_job"
+                        ? "border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/30 shadow-sm"
+                        : "border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className="block text-xs font-bold text-slate-900">Pay-Per-Job</span>
+                    <span className="block text-sm font-extrabold text-blue-600 mt-1">{payPerJobPriceStr}</span>
+                    <span className="block text-[10px] text-slate-500 mt-0.5">/ job (akhir bln)</span>
                   </button>
                 </div>
               </div>
@@ -597,6 +644,33 @@ export function OnboardingWizard({ initialPlan = "trial" }: OnboardingWizardProp
                 </div>
               </div>
 
+              {/* Optional Referral / Affiliate Code */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Kode Referral / Mitra (Opsional)
+                  </label>
+                  {referralCode && (
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                      Kemitraan Terdeteksi
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    placeholder="Contoh: PRIOK20, CATUR20"
+                    className="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-mono uppercase text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100 transition-all font-semibold"
+                  />
+                  <Sparkles className="absolute right-4 top-3 h-4 w-4 text-amber-500 pointer-events-none" />
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Dapatkan diskon dan prioritas onboarding dari mitra terdaftar sistemforwarding.com.
+                </p>
+              </div>
+
               {/* Error feedback */}
               {registrationResult?.error && (
                 <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-700">
@@ -622,6 +696,8 @@ export function OnboardingWizard({ initialPlan = "trial" }: OnboardingWizardProp
                       <span>
                         {selectedPlan === "trial"
                           ? "Aktifkan Trial 7 Hari Sekarang"
+                          : selectedPlan === "pay_per_job"
+                          ? "Aktifkan Ruang Kerja Pay-Per-Job"
                           : "Lanjutkan ke Pembayaran QRIS"}
                       </span>
                       <ArrowRight className="h-4 w-4" />

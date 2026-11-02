@@ -25,6 +25,9 @@ import {
 } from "lucide-react";
 import { ThemeProvider, useTheme } from "./ThemeProvider";
 import { TenantBroadcastBanner } from "./TenantBroadcastBanner";
+import { SubscriptionAlertBanner } from "./SubscriptionAlertBanner";
+import { SubscriptionPaymentModal } from "./SubscriptionPaymentModal";
+import { TenantSubscriptionInfo } from "@/actions/tenantSubscriptionActions";
 import { logoutAction } from "@/lib/auth-actions";
 
 interface TenantShellProps {
@@ -36,6 +39,7 @@ interface TenantShellProps {
   userEmail?: string;
   userRole?: string;
   isImpersonating?: boolean;
+  subscriptionInfo?: TenantSubscriptionInfo | null;
   children: React.ReactNode;
 }
 
@@ -48,11 +52,13 @@ function TenantShellContent({
   userEmail,
   userRole = "Tenant Admin",
   isImpersonating = false,
+  subscriptionInfo = null,
   children,
 }: TenantShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isRenewalModalOpen, setIsRenewalModalOpen] = useState(false);
   const { theme, toggleTheme, setTheme } = useTheme();
   const pathname = usePathname();
 
@@ -119,7 +125,7 @@ function TenantShellContent({
         pathname.startsWith(`/${tenant}/customers`),
     },
     {
-      name: "Mitra Vendor",
+      name: "Carrier & Mitra Logistik",
       href: "/vendors",
       icon: Truck,
       current:
@@ -343,19 +349,56 @@ function TenantShellContent({
             <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 flex items-center justify-center text-white font-black text-xs shadow-md shadow-blue-500/20 shrink-0">
               {companyName ? companyName.substring(0, 2).toUpperCase() : "SF"}
             </div>
-            <div className="truncate">
-              <div className="flex items-center gap-1.5">
-                <span className="inline-block px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-500/30 rounded-full">
+            <div className="truncate flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span
+                  className={`inline-block px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider rounded-full border ${
+                    subscriptionInfo?.isExpired
+                      ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/30"
+                      : subscriptionInfo?.isExpiringSoon
+                      ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30"
+                      : "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-500/30"
+                  }`}
+                >
                   {subscriptionStatus}
                 </span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Enterprise</span>
+                {subscriptionInfo?.daysRemaining !== null &&
+                  subscriptionInfo?.daysRemaining !== undefined && (
+                    <span
+                      className={`text-[10px] font-bold ${
+                        subscriptionInfo.daysRemaining <= 3
+                          ? "text-rose-600 dark:text-rose-400"
+                          : subscriptionInfo.daysRemaining <= 7
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-slate-400 dark:text-slate-500"
+                      }`}
+                    >
+                      {subscriptionInfo.daysRemaining > 0
+                        ? `Sisa ${subscriptionInfo.daysRemaining}h`
+                        : "Kedaluwarsa"}
+                    </span>
+                  )}
               </div>
-              <h2 className="text-xs font-bold text-slate-900 dark:text-white leading-tight truncate mt-0.5" title={companyName}>
+              <h2
+                className="text-xs font-bold text-slate-900 dark:text-white leading-tight truncate mt-0.5"
+                title={companyName}
+              >
                 {companyName}
               </h2>
               <p className="text-[11px] font-mono text-blue-600 dark:text-blue-400 truncate">
                 {tenant}.sistemforwarding.com
               </p>
+              {(subscriptionInfo?.isExpiringSoon ||
+                subscriptionInfo?.isExpired ||
+                subscriptionInfo?.pendingInvoice) && (
+                <button
+                  type="button"
+                  onClick={() => setIsRenewalModalOpen(true)}
+                  className="mt-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>Perpanjang Langganan →</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -644,6 +687,12 @@ function TenantShellContent({
           </div>
         </header>
 
+        {/* SaaS Subscription Expiration / Payment Reminder Banner */}
+        <SubscriptionAlertBanner
+          subdomain={tenant}
+          subscriptionInfo={subscriptionInfo || null}
+        />
+
         {/* Platform Broadcast Announcement Banner */}
         <TenantBroadcastBanner subdomain={tenant} />
 
@@ -652,6 +701,14 @@ function TenantShellContent({
           {children}
         </main>
       </div>
+
+      {/* Renewal / Payment Modal */}
+      <SubscriptionPaymentModal
+        isOpen={isRenewalModalOpen}
+        onClose={() => setIsRenewalModalOpen(false)}
+        subdomain={tenant}
+        subscriptionInfo={subscriptionInfo || null}
+      />
     </div>
   );
 }

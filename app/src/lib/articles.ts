@@ -255,12 +255,13 @@ export const ARTICLES: Article[] = [
  */
 export async function getArticlesFromDb(): Promise<Article[]> {
   try {
-    const dbArticles = await prisma.article.findMany({
-      where: { isPublished: true },
-      orderBy: { publishedAt: "desc" },
-    });
+    const totalCount = await prisma.article.count();
+    if (totalCount > 0) {
+      const dbArticles = await prisma.article.findMany({
+        where: { isPublished: true },
+        orderBy: { publishedAt: "desc" },
+      });
 
-    if (dbArticles.length > 0) {
       return dbArticles.map((row) => ({
         slug: row.slug,
         title: row.title,
@@ -277,7 +278,7 @@ export async function getArticlesFromDb(): Promise<Article[]> {
         icon: getCategoryIcon(row.category),
         accentColor: "from-blue-600 to-cyan-500",
         coverImage: row.coverImage || "/blog/cloud-tms.jpg",
-        content: row.content as any,
+        content: row.content as unknown as Article["content"],
       }));
     }
   } catch (error) {
@@ -297,7 +298,10 @@ export async function getArticleBySlugFromDb(slug: string): Promise<Article | un
       where: { slug },
     });
 
-    if (row && row.isPublished) {
+    if (row) {
+      if (!row.isPublished) {
+        return undefined; // Deliberately unpublished / draft
+      }
       return {
         slug: row.slug,
         title: row.title,
@@ -314,7 +318,7 @@ export async function getArticleBySlugFromDb(slug: string): Promise<Article | un
         icon: getCategoryIcon(row.category),
         accentColor: "from-blue-600 to-cyan-500",
         coverImage: row.coverImage || "/blog/cloud-tms.jpg",
-        content: row.content as any,
+        content: row.content as unknown as Article["content"],
       };
     }
   } catch (error) {

@@ -19,6 +19,27 @@ enum SubscriptionStatus {
   CANCELLED
 }
 
+enum AffiliateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum AffiliatePayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  REJECTED
+}
+
+enum PlatformInvoiceStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
 enum UserRole {
   SUPERADMIN     // Global platform operator across all tenants
   TENANT_ADMIN   // Company administrator with full tenant governance
@@ -36,11 +57,28 @@ enum PrefixType {
   AIRWAY_BILL
 }
 
+enum CustomerType {
+  DIRECT_SHIPPER     // Eksportir / Shipper Langsung
+  DIRECT_CONSIGNEE   // Importir / Consignee Langsung
+  FORWARDER_PARTNER  // Mitra Perusahaan Forwarding Lain (Broker / Co-Loader Client)
+  OVERSEAS_AGENT     // Agen Forwarder Luar Negeri
+  OTHERS             // Pihak Ketiga Lainnya
+}
+
+enum BillingPartyType {
+  SHIPPER            // Ditagih ke Shipper (Prepaid / Origin-controlled)
+  CONSIGNEE          // Ditagih ke Consignee (Collect / Destination-controlled)
+  FORWARDER_PARTNER  // Ditagih ke Perusahaan Forwarder Mitra
+  THIRD_PARTY        // Ditagih ke Pihak Ketiga Tertunjuk
+}
+
 enum VendorCategory {
   CARRIER_SEA
   CARRIER_AIR
   HAULAGE_TRUCK
   CUSTOMS_BROKER
+  CFS_WAREHOUSE
+  PORT_TERMINAL
   OTHERS
 }
 
@@ -153,6 +191,12 @@ model Tenant {
   jobFiles           JobFile[]
   invoices           Invoice[]
   dictionaries       SystemDictionary[]
+  platformInvoices   PlatformInvoice[]
+
+  // Affiliate & Referral tracking
+  referredByAffiliateId String?
+  referredByAffiliate   Affiliate?             @relation("AffiliateTenants", fields: [referredByAffiliateId], references: [id], onDelete: SetNull)
+  affiliateCommissions  AffiliateCommission[]
 
   @@map("tenants")
 }
@@ -534,6 +578,7 @@ model MasterCustomer {
 
   customerCode    String          // E.g., 'CUST-001'
   name            String          // E.g., 'PT Sumber Makmur Ekspor'
+  customerType    CustomerType    @default(DIRECT_SHIPPER) // DIRECT_SHIPPER, DIRECT_CONSIGNEE, FORWARDER_PARTNER, OVERSEAS_AGENT, OTHERS
   contactPerson   String?
   email           String?
   phone           String?
@@ -559,10 +604,12 @@ model MasterCustomer {
   updatedAt       DateTime        @updatedAt
 
   jobFiles        JobFile[]
+  billingJobFiles JobFile[]       @relation("JobFileBillingParty")
   invoices        Invoice[]
 
   @@unique([tenantId, customerCode])
   @@index([tenantId])
+  @@index([customerType])
   @@index([provinceId])
   @@index([cityId])
   @@index([districtId])
@@ -620,6 +667,31 @@ model MasterRoute {
   @@index([destinationPortId])
   @@map("master_routes")
 }
+
+// ==============================================================================
+// 10b. GLOBAL CARRIER ENTITY (Shipping Lines & Airlines Sedunia)
+// Global master data shared across all tenants for freight operations
+// ==============================================================================
+
+model GlobalCarrier {
+  id          String        @id @default(cuid())
+  carrierCode String        @unique // E.g., 'MSK', 'EMC', 'MSC', 'GA', 'SQ', 'CMA'
+  carrierName String        // E.g., 'Maersk Line', 'Evergreen Marine', 'Garuda Indonesia Cargo'
+  mode        TransportMode @default(SEA) // SEA, AIR, INLAND
+  scacCode    String?       // Standard Carrier Alpha Code for ocean lines (e.g., 'MAEU', 'EGLV')
+  iataCode    String?       // IATA 2-letter or airline prefix (e.g., 'GA', 'SQ', '126')
+  country     String?       // E.g., 'ID', 'SG', 'DK', 'TW'
+  website     String?
+  isActive    Boolean       @default(true)
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([mode])
+  @@index([carrierCode])
+  @@map("global_carriers")
+}
+
 
 // ==============================================================================
 // 11. MASTER CHARGE CODE ENTITY (Komponen Biaya Pengiriman)
@@ -683,6 +755,16 @@ model JobFile {
 
   vendorId             String?
   vendor               MasterVendor?   @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  // Dokumen Referensi Awal & Klien Mitra (Broker / Direct)
+  customerRefNo        String?         // No. PO Customer / No. Job Order Forwarder Mitra
+  shippingInstructionNo String?        // No. Shipping Instruction (SI)
+  commercialInvoiceNo  String?         // No. Commercial Invoice (CI)
+
+  // Penetapan Pihak Tertagih (Billing Party)
+  billingPartyType     BillingPartyType @default(SHIPPER)
+  billingPartyId       String?
+  billingParty         MasterCustomer? @relation("JobFileBillingParty", fields: [billingPartyId], references: [id], onDelete: SetNull)
 
   // Operational Metadata
   status               JobFileStatus   @default(DRAFT)
@@ -780,6 +862,7 @@ model JobFile {
   @@unique([tenantId, jobFileNumber])
   @@index([tenantId])
   @@index([customerId])
+  @@index([billingPartyId])
   @@index([vendorId])
   @@index([status])
   @@index([bizMode])
@@ -970,3 +1053,209 @@ model Article {
   @@index([isPublished])
   @@map("articles")
 }
+
+// ==============================================================================
+// 16. PLATFORM PLAN ENTITY (SaaS Dynamic Pricing Packages & Feature Limits)
+// ==============================================================================
+
+model PlatformPlan {
+  id              String            @id @default(cuid())
+  code            String            @unique // E.g., 'TRIAL', 'MONTHLY', 'YEARLY', 'ENTERPRISE'
+  name            String            // E.g., 'Starter Free Trial', 'Bisnis Profesional'
+  description     String?
+  price           Decimal           @default(0) @db.Decimal(15, 2)
+  originalPrice   Decimal?          @db.Decimal(15, 2)
+  billingCycle    String            @default("MONTHLY") // 'TRIAL' | 'MONTHLY' | 'YEARLY' | 'PAY_PER_JOB'
+  durationDays    Int               @default(30)
+  maxUsers        Int               @default(5)
+  maxJobFiles     Int               @default(100)
+  features        Json?             // Array of strings or structured feature flags
+  badge           String?           // E.g., 'Paling Populer', 'Uji Coba Gratis'
+  isPopular       Boolean           @default(false)
+  isActive        Boolean           @default(true)
+  sortOrder       Int               @default(0)
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  invoices        PlatformInvoice[]
+
+  @@map("platform_plans")
+}
+
+// ==============================================================================
+// 17. PLATFORM INVOICE ENTITY (SaaS Subscription Invoicing & BorderPay QRIS)
+// ==============================================================================
+
+model PlatformInvoice {
+  id               String                @id @default(cuid())
+  invoiceNumber    String                @unique // E.g., 'SAAS-2026-00001'
+  tenantId         String
+  tenant           Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  planId           String?
+  plan             PlatformPlan?         @relation(fields: [planId], references: [id], onDelete: SetNull)
+  planCode         String                // Snapshot: 'MONTHLY', 'YEARLY', etc.
+  planName         String                // Snapshot: 'Bisnis Profesional'
+  billingPeriod    String                // Snapshot: '1 Bulan' or '1 Tahun'
+
+  amount           Decimal               @db.Decimal(15, 2)
+  taxAmount        Decimal               @default(0) @db.Decimal(15, 2)
+  totalAmount      Decimal               @db.Decimal(15, 2)
+
+  status           PlatformInvoiceStatus @default(PENDING)
+  dueDate          DateTime
+  paidAt           DateTime?
+
+  paymentMethod    String?               // 'QRIS BorderPay', 'MANUAL_TRANSFER', 'BANK_TRANSFER'
+  paymentReference String?               // BorderPay transaction ID or manual proof ref
+  qrisString       String?               // Generated dynamic QRIS string
+  notes            String?
+
+  affiliateCommissions AffiliateCommission[]
+
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([invoiceNumber])
+  @@map("platform_invoices")
+}
+
+// ==============================================================================
+// 18. PLATFORM AUDIT LOG ENTITY (Super Admin Platform-Wide Activity & Impersonation)
+// ==============================================================================
+
+model PlatformAuditLog {
+  id            String    @id @default(cuid())
+  operatorId    String?
+  operatorName  String
+  operatorEmail String
+  action        String    // E.g., IMPERSONATE_START, IMPERSONATE_STOP, TENANT_SUSPEND, etc.
+  targetType    String?   // E.g., TENANT, INVOICE, PLAN, AUTH
+  targetId      String?
+  targetName    String?
+  details       Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+
+  @@index([action])
+  @@index([targetType])
+  @@index([createdAt])
+  @@index([operatorEmail])
+  @@map("platform_audit_logs")
+}
+
+// ==============================================================================
+// 19. PLATFORM BROADCAST ENTITY (Platform-Wide System Announcements & Maintenance Alerts)
+// ==============================================================================
+
+model PlatformBroadcast {
+  id              String    @id @default(cuid())
+  title           String
+  message         String    @db.Text
+  type            String    @default("INFO") // INFO, UPDATE, MAINTENANCE, ALERT
+  linkUrl         String?
+  linkLabel       String?
+  targetSubdomain String?   // null = all tenants, or specific tenant subdomain
+  isActive        Boolean   @default(true)
+  startsAt        DateTime  @default(now())
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([isActive])
+  @@index([type])
+  @@index([startsAt])
+  @@index([expiresAt])
+  @@map("platform_broadcasts")
+}
+
+// ==============================================================================
+// 20. B2B SAAS AFFILIATE & REFERRAL PROGRAM ENTITIES
+// ==============================================================================
+
+model Affiliate {
+  id                String                 @id @default(cuid())
+  code              String                 @unique // E.g., 'PRIOK20', 'CATUR20'
+  fullName          String
+  email             String                 @unique
+  phone             String                 // WhatsApp contact for real-time commission alerts
+  passwordHash      String?                // Hashed password for /affiliate/portal login
+  occupation        String?                // "Staf PPJK", "Agen Asuransi", "Konsultan Pajak", etc.
+  companyName       String?                // Workplace / Agency
+  bankName          String                 // "BCA", "Mandiri", "BRI", "BNI", etc.
+  bankAccountNumber String
+  bankAccountName   String
+
+  commissionRate    Decimal                @default(20.00) @db.Decimal(5, 2) // Default 20% recurring
+  status            AffiliateStatus        @default(PENDING)
+  totalClicks       Int                    @default(0)
+  rejectionReason   String?
+  notes             String?
+
+  // Relational Collections
+  referredTenants   Tenant[]               @relation("AffiliateTenants")
+  commissions       AffiliateCommission[]
+  payouts           AffiliatePayout[]
+
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@index([code])
+  @@index([email])
+  @@index([status])
+  @@map("affiliates")
+}
+
+model AffiliateCommission {
+  id                String                 @id @default(cuid())
+  affiliateId       String
+  affiliate         Affiliate              @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  tenantId          String
+  tenant            Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  platformInvoiceId String?
+  platformInvoice   PlatformInvoice?       @relation(fields: [platformInvoiceId], references: [id], onDelete: SetNull)
+
+  invoiceAmount     Decimal                @db.Decimal(15, 2)
+  commissionAmount  Decimal                @db.Decimal(15, 2)
+  status            PlatformInvoiceStatus  @default(PAID) // PAID when generated from paid invoice
+  notes             String?
+
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@index([affiliateId])
+  @@index([tenantId])
+  @@index([platformInvoiceId])
+  @@map("affiliate_commissions")
+}
+
+model AffiliatePayout {
+  id                String                 @id @default(cuid())
+  affiliateId       String
+  affiliate         Affiliate              @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  amount            Decimal                @db.Decimal(15, 2)
+  status            AffiliatePayoutStatus  @default(PENDING)
+  bankName          String
+  bankAccountNumber String
+  bankAccountName   String
+  transferProofUrl  String?
+  notes             String?
+  processedAt       DateTime?
+
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@index([affiliateId])
+  @@index([status])
+  @@map("affiliate_payouts")
+}
+
+
+

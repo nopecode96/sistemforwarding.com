@@ -5,6 +5,7 @@ import "./globals.css";
 import { ScrollToTop } from "@/components/public/ScrollToTop";
 import { GooglePopupCallback } from "@/components/public/GooglePopupCallback";
 import { WhatsAppWidget } from "@/components/public/WhatsAppWidget";
+import { LanguageProvider } from "@/context/LanguageContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -76,10 +77,12 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col">
-        <GooglePopupCallback />
-        {children}
-        <ScrollToTop />
-        <WhatsAppWidget />
+        <LanguageProvider>
+          <GooglePopupCallback />
+          {children}
+          <ScrollToTop />
+          <WhatsAppWidget />
+        </LanguageProvider>
       </body>
     </html>
   );

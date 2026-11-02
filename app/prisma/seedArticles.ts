@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import { ARTICLES } from "../src/lib/articles";
 
 const prisma = new PrismaClient();
@@ -32,7 +32,7 @@ async function main() {
         authorRole: a.authorRole,
         readTime: a.readTime,
         coverImage,
-        content: a.content as any,
+        content: a.content as unknown as Prisma.InputJsonValue,
         isPublished: true,
       },
       create: {
@@ -44,7 +44,7 @@ async function main() {
         authorRole: a.authorRole,
         readTime: a.readTime,
         coverImage,
-        content: a.content as any,
+        content: a.content as unknown as Prisma.InputJsonValue,
         isPublished: true,
         publishedAt: new Date(),
       },

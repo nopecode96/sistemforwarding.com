@@ -16,6 +16,21 @@ function formatDate(date: Date | null | undefined): string {
   });
 }
 
+function formatBillingPartyType(type: string | null | undefined): string {
+  switch (type) {
+    case "SHIPPER":
+      return "Shipper (Prepaid)";
+    case "CONSIGNEE":
+      return "Consignee (Collect)";
+    case "FORWARDER_PARTNER":
+      return "Mitra Forwarder (Broker)";
+    case "THIRD_PARTY":
+      return "Pihak Ketiga Tertunjuk";
+    default:
+      return type || "Direct";
+  }
+}
+
 function headerStyle(cell: ExcelJS.Cell) {
   cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F172A" } };
   cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
@@ -191,7 +206,14 @@ export async function GET(
       where: { tenantId, status: { not: "PAID" } },
       include: {
         customer: { select: { name: true, customerCode: true, phone: true } },
-        jobFile: { select: { jobFileNumber: true } },
+        jobFile: {
+          select: {
+            jobFileNumber: true,
+            customerRefNo: true,
+            shippingInstructionNo: true,
+            billingPartyType: true,
+          },
+        },
       },
       orderBy: { dueDate: "asc" },
     });
@@ -199,12 +221,12 @@ export async function GET(
     const sheet = workbook.addWorksheet("AR Aging (Tagihan Jatuh Tempo)");
 
     // Title
-    sheet.mergeCells("A1:I1");
+    sheet.mergeCells("A1:L1");
     sheet.getCell("A1").value = `REKAP TAGIHAN JATUH TEMPO (AR AGING) — ${tenantRecord.companyName}`;
     sheet.getCell("A1").font = { bold: true, size: 13, color: { argb: "FFDC2626" } };
     sheet.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
     sheet.getRow(1).height = 28;
-    sheet.mergeCells("A2:I2");
+    sheet.mergeCells("A2:L2");
     sheet.getCell("A2").value = `Per tanggal: ${today}`;
     sheet.getCell("A2").font = { size: 8, color: { argb: "FF94A3B8" } };
     sheet.getCell("A2").alignment = { horizontal: "center" };
@@ -212,10 +234,13 @@ export async function GET(
 
     const headers = [
       "No. Invoice",
-      "Customer",
+      "Customer / Pihak Tertagih",
       "Kode",
       "Telepon",
+      "Role Tagihan",
       "Ref. Job File",
+      "Ref. PO Klien / Broker",
+      "No. SI",
       "Tgl. Invoice",
       "Jatuh Tempo",
       "Hari Terlambat",
@@ -228,7 +253,10 @@ export async function GET(
       { key: "customer", width: 30 },
       { key: "code", width: 14 },
       { key: "phone", width: 18 },
+      { key: "role", width: 22 },
       { key: "jobFile", width: 22 },
+      { key: "clientRef", width: 25 },
+      { key: "siNo", width: 22 },
       { key: "invDate", width: 16 },
       { key: "dueDate", width: 16 },
       { key: "daysOverdue", width: 16 },
@@ -249,7 +277,10 @@ export async function GET(
         inv.customer.name,
         inv.customer.customerCode,
         inv.customer.phone || "-",
+        formatBillingPartyType(inv.jobFile?.billingPartyType),
         inv.jobFile?.jobFileNumber || "-",
+        inv.jobFile?.customerRefNo || "-",
+        inv.jobFile?.shippingInstructionNo || "-",
         formatDate(inv.invoiceDate),
         formatDate(inv.dueDate),
         daysOverdue > 0 ? `${daysOverdue} hari` : "Belum jatuh tempo",
@@ -270,7 +301,7 @@ export async function GET(
     sheet.addRow([]);
     const summaryRow = sheet.addRow([
       `Total: ${invoices.length} invoice belum lunas`,
-      "", "", "", "", "", "", "",
+      "", "", "", "", "", "", "", "", "", "",
       formatIDR(grandTotal),
     ]);
     summaryRow.font = { bold: true };

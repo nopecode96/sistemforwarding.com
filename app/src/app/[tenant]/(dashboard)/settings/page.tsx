@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { LogoUploadCard } from "@/components/tenant/LogoUploadCard";
 import { TenantSettingsForm } from "@/components/tenant/TenantSettingsForm";
+import { TrackingWidgetSettingsCard } from "@/components/tenant/TrackingWidgetSettingsCard";
 import {
   Building2,
   Shield,
@@ -127,6 +128,12 @@ export default async function TenantSettingsPage({ params }: SettingsPageProps) 
             tenantSubdomain={tenant.subdomain}
             companyName={tenant.companyName}
             currentLogoUrl={tenant.logoUrl}
+          />
+
+          {/* Website Tracking Widget Embed & Integration Card */}
+          <TrackingWidgetSettingsCard
+            subdomain={tenant.subdomain}
+            companyName={tenant.companyName}
           />
 
           {/* MasterPrefix Settings (Database-Driven Auto-Numbering) */}
@@ -433,13 +440,37 @@ export default async function TenantSettingsPage({ params }: SettingsPageProps) 
               <div>
                 <span className="text-slate-400 dark:text-slate-500 font-medium block mb-0.5">Status Langganan</span>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-500/30">
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    tenant.subscriptionStatus === "EXPIRED"
+                      ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-500/30"
+                      : "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-500/30"
+                  }`}>
                     {tenant.subscriptionStatus}
                   </span>
                   <span className="text-slate-500 dark:text-slate-400 text-[11px]">
-                    Paket {tenant.subscriptionTier}
+                    Paket {tenant.subscriptionTier} ({tenant.billingCycle})
                   </span>
                 </div>
+              </div>
+
+              <div>
+                <span className="text-slate-400 dark:text-slate-500 font-medium block mb-0.5">Masa Berlaku / Jatuh Tempo</span>
+                <span className="text-slate-900 dark:text-white font-semibold">
+                  {tenant.trialEndsAt
+                    ? new Date(tenant.trialEndsAt).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })
+                    : "Tidak Terbatas / Pay-Per-Job"}
+                </span>
+                {tenant.trialEndsAt && (
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                    {Math.ceil((new Date(tenant.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) > 0
+                      ? `Tersisa ${Math.ceil((new Date(tenant.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} hari lagi`
+                      : "Masa langganan telah berakhir"}
+                  </span>
+                )}
               </div>
 
               <div>

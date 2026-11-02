@@ -34,7 +34,7 @@ export default async function TenantMasterPage({ params, searchParams }: MasterP
 
   // 2. Fetch purely master reference datasets from PostgreSQL
   // Note: Customer and Vendor have their own dedicated sidebar pages (/customers & /vendors)
-  const [ports, units, itemTypes, prefixes, currencies, provinces] = await Promise.all([
+  const [ports, units, itemTypes, prefixes, currencies, provinces, globalCarriers, dictionaries] = await Promise.all([
     prisma.masterPort.findMany({
       take: 100,
       orderBy: { portCode: "asc" },
@@ -68,6 +68,17 @@ export default async function TenantMasterPage({ params, searchParams }: MasterP
           },
         },
       },
+    }),
+    prisma.globalCarrier.findMany({
+      where: { isActive: true },
+      orderBy: [{ mode: "asc" }, { carrierCode: "asc" }],
+    }),
+    prisma.systemDictionary.findMany({
+      where: {
+        OR: [{ tenantId: tenant.id }, { tenantId: null }],
+        isActive: true,
+      },
+      orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
     }),
   ]);
 
@@ -127,6 +138,8 @@ export default async function TenantMasterPage({ params, searchParams }: MasterP
             })),
           })),
         }))}
+        globalCarriers={globalCarriers}
+        dictionaries={dictionaries}
       />
     </Suspense>
   );

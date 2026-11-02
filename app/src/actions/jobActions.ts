@@ -8,6 +8,8 @@ import {
   JobFileStatus,
   BizMode,
   Bound,
+  BillingPartyType,
+  CustomerType,
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
@@ -27,6 +29,8 @@ export interface InitialJobFormData {
     id: string;
     name: string;
     customerCode: string;
+    customerType: string;
+    taxId?: string | null;
   }>;
   vendors: Array<{
     id: string;
@@ -136,7 +140,7 @@ export async function getInitialJobFormData(
   // Fetch tenant-scoped customers (Selling / AR side)
   const customers = await prisma.masterCustomer.findMany({
     where: { tenantId: tenant.id, isActive: true },
-    select: { id: true, name: true, customerCode: true },
+    select: { id: true, name: true, customerCode: true, customerType: true, taxId: true },
     orderBy: { name: "asc" },
   });
 
@@ -414,6 +418,19 @@ export async function createJobFile(
     const tenant = await resolveTenant(tenantIdentifier);
 
     // Operational Route & Scheduling Attributes
+    const customerRefNo = ((formData.get("customerRefNo") as string) || "").trim();
+    const shippingInstructionNo = ((formData.get("shippingInstructionNo") as string) || "").trim();
+    const commercialInvoiceNo = ((formData.get("commercialInvoiceNo") as string) || "").trim();
+    const billingPartyType = (formData.get("billingPartyType") as BillingPartyType) || BillingPartyType.SHIPPER;
+    const billingPartyIdInput = (formData.get("billingPartyId") as string) || null;
+
+    let resolvedBillingPartyId = billingPartyIdInput;
+    if (!resolvedBillingPartyId || resolvedBillingPartyId === "") {
+      if (billingPartyType === BillingPartyType.SHIPPER || billingPartyType === BillingPartyType.FORWARDER_PARTNER) {
+        resolvedBillingPartyId = customerId;
+      }
+    }
+
     const originPort = ((formData.get("originPort") as string) || "").trim();
     const destinationPort = ((formData.get("destinationPort") as string) || "").trim();
     const originPortIdInput = (formData.get("originPortId") as string) || null;
@@ -546,6 +563,11 @@ export async function createJobFile(
           jobFileNumber,
           customerId,
           vendorId: vendorId && vendorId !== "" ? vendorId : null,
+          customerRefNo: customerRefNo || null,
+          shippingInstructionNo: shippingInstructionNo || null,
+          commercialInvoiceNo: commercialInvoiceNo || null,
+          billingPartyType,
+          billingPartyId: resolvedBillingPartyId && resolvedBillingPartyId !== "" ? resolvedBillingPartyId : null,
           status: JobFileStatus.DRAFT,
           transportMode,
           shipmentType,
@@ -654,6 +676,11 @@ export async function createJobFile(
 export interface UpdateJobFileInput {
   id: string;
   tenantSubdomain: string;
+  customerRefNo?: string | null;
+  shippingInstructionNo?: string | null;
+  commercialInvoiceNo?: string | null;
+  billingPartyType?: BillingPartyType;
+  billingPartyId?: string | null;
   status?: JobFileStatus;
   bizMode?: BizMode;
   bound?: Bound;
@@ -712,6 +739,11 @@ export async function updateJobFile(data: UpdateJobFileInput): Promise<{
     const updated = await prisma.jobFile.update({
       where: { id: data.id },
       data: {
+        ...(data.customerRefNo !== undefined && { customerRefNo: data.customerRefNo }),
+        ...(data.shippingInstructionNo !== undefined && { shippingInstructionNo: data.shippingInstructionNo }),
+        ...(data.commercialInvoiceNo !== undefined && { commercialInvoiceNo: data.commercialInvoiceNo }),
+        ...(data.billingPartyType && { billingPartyType: data.billingPartyType }),
+        ...(data.billingPartyId !== undefined && { billingPartyId: data.billingPartyId }),
         ...(data.status && { status: data.status }),
         ...(data.bizMode && { bizMode: data.bizMode }),
         ...(data.bound && { bound: data.bound }),

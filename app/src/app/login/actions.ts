@@ -56,6 +56,28 @@ export async function authenticateUser(
       };
     }
 
+    // Tenant workspace suspension guard
+    if (
+      user.role !== "SUPERADMIN" &&
+      user.tenant &&
+      (!user.tenant.isActive || user.tenant.subscriptionStatus === "SUSPENDED")
+    ) {
+      return {
+        success: false,
+        error: "Ruang kerja tenant ini sedang ditangguhkan (SUSPENDED). Silakan hubungi Super Administrator.",
+      };
+    }
+
+    const password = (formData.get("password") as string)?.trim();
+    if (user.passwordHash) {
+      if (!password || user.passwordHash !== password) {
+        return {
+          success: false,
+          error: "Kata sandi yang Anda masukkan tidak sesuai.",
+        };
+      }
+    }
+
     // 2. Create Session Token (7 days)
     const sessionToken = await createSessionToken({
       userId: user.id,

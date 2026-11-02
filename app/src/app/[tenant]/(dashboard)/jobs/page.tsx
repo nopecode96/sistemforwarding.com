@@ -44,6 +44,7 @@ export default async function TenantJobsPage({ params }: JobsPageProps) {
       where: { tenantId: tenant.id },
       include: {
         customer: { select: { id: true, name: true, customerCode: true, taxId: true, email: true, phone: true } },
+        billingParty: { select: { id: true, name: true, customerCode: true } },
         vendor: { select: { id: true, name: true, vendorCode: true, category: true } },
         originPortRef: { select: { portCode: true, portName: true, city: true, countryName: true } },
         destinationPortRef: { select: { portCode: true, portName: true, city: true, countryName: true } },
@@ -84,6 +85,11 @@ export default async function TenantJobsPage({ params }: JobsPageProps) {
     return {
       id: j.id,
       jobFileNumber: j.jobFileNumber,
+      customerRefNo: j.customerRefNo || null,
+      shippingInstructionNo: j.shippingInstructionNo || null,
+      commercialInvoiceNo: j.commercialInvoiceNo || null,
+      billingPartyType: j.billingPartyType || "SHIPPER",
+      billingPartyName: j.billingParty?.name || (j.billingPartyType === "CONSIGNEE" ? (j.consigneeName || "Consignee") : (j.customer?.name || "Shipper")),
       customerName: j.customer?.name || "Customer",
       customerCode: j.customer?.customerCode,
       customerTaxId: j.customer?.taxId || null,

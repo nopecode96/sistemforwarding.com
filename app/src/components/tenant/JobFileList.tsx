@@ -59,6 +59,11 @@ export interface CargoDetailItem {
 export interface JobFileItem {
   id: string;
   jobFileNumber: string;
+  customerRefNo?: string | null;
+  shippingInstructionNo?: string | null;
+  commercialInvoiceNo?: string | null;
+  billingPartyType?: string | null;
+  billingPartyName?: string | null;
   customerName: string;
   customerCode?: string;
   customerTaxId?: string | null;
@@ -147,6 +152,10 @@ export function JobFileList({
 
   // Edit form state
   const [editFormData, setEditFormData] = useState<{
+    customerRefNo: string;
+    shippingInstructionNo: string;
+    commercialInvoiceNo: string;
+    billingPartyType: string;
     status: JobFileStatus;
     bizMode: BizMode;
     bound: Bound;
@@ -182,6 +191,10 @@ export function JobFileList({
     buyingAmount: number;
     remarks: string;
   }>({
+    customerRefNo: "",
+    shippingInstructionNo: "",
+    commercialInvoiceNo: "",
+    billingPartyType: "SHIPPER",
     status: JobFileStatus.DRAFT,
     bizMode: BizMode.SEA,
     bound: Bound.EXPORT,
@@ -283,6 +296,10 @@ export function JobFileList({
   const handleOpenEdit = (job: JobFileItem) => {
     setEditingJob(job);
     setEditFormData({
+      customerRefNo: job.customerRefNo || "",
+      shippingInstructionNo: job.shippingInstructionNo || "",
+      commercialInvoiceNo: job.commercialInvoiceNo || "",
+      billingPartyType: job.billingPartyType || "SHIPPER",
       status: (job.status as JobFileStatus) || JobFileStatus.DRAFT,
       bizMode: (job.bizMode as BizMode) || (job.transportMode === "AIR" ? BizMode.AIR : BizMode.SEA),
       bound: (job.bound as Bound) || (job.shipmentType === "IMPORT" ? Bound.IMPORT : Bound.EXPORT),
@@ -329,6 +346,10 @@ export function JobFileList({
       const res = await updateJobFile({
         id: editingJob.id,
         tenantSubdomain,
+        customerRefNo: editFormData.customerRefNo || null,
+        shippingInstructionNo: editFormData.shippingInstructionNo || null,
+        commercialInvoiceNo: editFormData.commercialInvoiceNo || null,
+        billingPartyType: (editFormData.billingPartyType as any) || "SHIPPER",
         status: editFormData.status,
         bizMode: editFormData.bizMode,
         bound: editFormData.bound,
@@ -377,6 +398,10 @@ export function JobFileList({
               const margin = selling > 0 ? (profit / selling) * 100 : 0;
               return {
                 ...j,
+                customerRefNo: editFormData.customerRefNo || null,
+                shippingInstructionNo: editFormData.shippingInstructionNo || null,
+                commercialInvoiceNo: editFormData.commercialInvoiceNo || null,
+                billingPartyType: editFormData.billingPartyType,
                 status: editFormData.status,
                 bizMode: editFormData.bizMode,
                 bound: editFormData.bound,
@@ -447,6 +472,9 @@ export function JobFileList({
     const matchesSearch =
       job.jobFileNumber.toLowerCase().includes(q) ||
       job.customerName.toLowerCase().includes(q) ||
+      (job.customerRefNo && job.customerRefNo.toLowerCase().includes(q)) ||
+      (job.shippingInstructionNo && job.shippingInstructionNo.toLowerCase().includes(q)) ||
+      (job.commercialInvoiceNo && job.commercialInvoiceNo.toLowerCase().includes(q)) ||
       (job.vendorName && job.vendorName.toLowerCase().includes(q)) ||
       (job.masterBillOfLading && job.masterBillOfLading.toLowerCase().includes(q)) ||
       (job.houseBillOfLading && job.houseBillOfLading.toLowerCase().includes(q)) ||
@@ -624,6 +652,16 @@ export function JobFileList({
                         <span className="font-mono text-sm sm:text-base font-black text-violet-600 dark:text-violet-400">
                           {job.jobFileNumber}
                         </span>
+                        {job.customerRefNo && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border border-violet-200/80" title="Nomor Referensi Klien / PO / Job Order Mitra">
+                            Ref: {job.customerRefNo}
+                          </span>
+                        )}
+                        {job.shippingInstructionNo && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/80" title="Nomor Shipping Instruction">
+                            SI: {job.shippingInstructionNo}
+                          </span>
+                        )}
                         <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300">
                           {job.bizMode || job.transportMode} • {job.bound || job.shipmentType}
                         </span>
@@ -666,8 +704,13 @@ export function JobFileList({
                       {job.customerName}
                     </p>
                     <span className="text-[11px] text-slate-400 block mt-0.5 truncate">
-                      Mitra Vendor: {job.vendorName || "Belum Ditunjuk"}
+                      Carrier: {job.vendorName || "Belum Ditunjuk"}
                     </span>
+                    {job.billingPartyName && (
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold block mt-1 truncate" title={`Tertagih: ${job.billingPartyName} (${job.billingPartyType})`}>
+                        Tertagih: {job.billingPartyName}
+                      </span>
+                    )}
                   </div>
 
                   {/* POL -> POD Route */}
@@ -982,6 +1025,46 @@ export function JobFileList({
                             </span>
                           </div>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Referensi Dokumen & Billing Party */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/[0.08] sm:col-span-2">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/50 dark:border-white/[0.05]">
+                      <span className="text-[10px] font-bold uppercase text-slate-400">
+                        Dokumen Referensi &amp; Pihak Tertagih (Billing Party)
+                      </span>
+                      {selectedDetailJob.billingPartyType && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                          Billing Role: {selectedDetailJob.billingPartyType}
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2 text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Ref / Job Order Mitra</span>
+                        <p className="font-mono font-bold text-violet-700 dark:text-violet-400 truncate">
+                          {selectedDetailJob.customerRefNo || "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">No. Shipping Instruction</span>
+                        <p className="font-mono font-bold text-slate-800 dark:text-slate-200 truncate">
+                          {selectedDetailJob.shippingInstructionNo || "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">No. Commercial Invoice</span>
+                        <p className="font-mono font-bold text-slate-800 dark:text-slate-200 truncate">
+                          {selectedDetailJob.commercialInvoiceNo || "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Entitas Tertagih (Invoice AR)</span>
+                        <p className="font-bold text-emerald-700 dark:text-emerald-400 truncate">
+                          {selectedDetailJob.billingPartyName || selectedDetailJob.customerName}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1389,6 +1472,81 @@ export function JobFileList({
                       }
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10"
                     />
+                  </div>
+                </div>
+
+                {/* 2.1 Dokumen Permintaan & Referensi Klien (Broker & Direct) */}
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 space-y-2.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
+                    Referensi Dokumen &amp; Brokerage Order
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div>
+                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-0.5">
+                        No. Referensi Job / PO Klien
+                      </label>
+                      <input
+                        type="text"
+                        value={editFormData.customerRefNo}
+                        onChange={(e) =>
+                          setEditFormData({ ...editFormData, customerRefNo: e.target.value })
+                        }
+                        placeholder="Contoh: JOB-FWD-2026-88"
+                        className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-[#1a2130] border border-slate-200 dark:border-white/10 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-0.5">
+                        No. Shipping Instruction (SI)
+                      </label>
+                      <input
+                        type="text"
+                        value={editFormData.shippingInstructionNo}
+                        onChange={(e) =>
+                          setEditFormData({ ...editFormData, shippingInstructionNo: e.target.value })
+                        }
+                        placeholder="Contoh: SI/2026/10/004"
+                        className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-[#1a2130] border border-slate-200 dark:border-white/10 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-0.5">
+                        No. Commercial Invoice (CI)
+                      </label>
+                      <input
+                        type="text"
+                        value={editFormData.commercialInvoiceNo}
+                        onChange={(e) =>
+                          setEditFormData({ ...editFormData, commercialInvoiceNo: e.target.value })
+                        }
+                        placeholder="Contoh: INV-EXP-2026-042"
+                        className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-[#1a2130] border border-slate-200 dark:border-white/10 font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2.2 Pihak Tertagih (Billing Party) */}
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 space-y-2.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
+                    Penetapan Pihak Tertagih (Billing Party Role)
+                  </span>
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-0.5">
+                      Tagihan Diarahkan Kepada
+                    </label>
+                    <select
+                      value={editFormData.billingPartyType}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, billingPartyType: e.target.value })
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1a2130] border border-slate-200 dark:border-white/10 font-semibold"
+                    >
+                      <option value="SHIPPER">Shipper / Eksportir (Freight Prepaid)</option>
+                      <option value="CONSIGNEE">Consignee / Importir (Freight Collect)</option>
+                      <option value="FORWARDER_PARTNER">Perusahaan Forwarder Mitra (B2B Brokerage)</option>
+                      <option value="THIRD_PARTY">Pihak Ketiga Tertunjuk / Agen</option>
+                    </select>
                   </div>
                 </div>
 

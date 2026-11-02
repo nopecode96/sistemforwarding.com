@@ -7,6 +7,8 @@ import {
   Plane,
   ShieldCheck,
   Layers,
+  Box,
+  Anchor,
   Plus,
   Search,
   CreditCard,
@@ -113,7 +115,9 @@ const CATEGORY_CONFIG: Record<
   CARRIER_AIR: { label: "Maskapai Udara (Airlines Cargo)", icon: Plane, color: "violet" },
   HAULAGE_TRUCK: { label: "Armada Truk (Haulage / Inland)", icon: Truck, color: "amber" },
   CUSTOMS_BROKER: { label: "PPJK & Kepabeanan (Customs)", icon: ShieldCheck, color: "emerald" },
-  OTHERS: { label: "Vendor Pendukung Lainnya", icon: Layers, color: "slate" },
+  CFS_WAREHOUSE: { label: "CFS & Pergudangan (Warehouse)", icon: Box, color: "violet" },
+  PORT_TERMINAL: { label: "Terminal & Pelabuhan (Port / Lo-Lo)", icon: Anchor, color: "blue" },
+  OTHERS: { label: "Penyedia Jasa Pendukung Lainnya", icon: Layers, color: "slate" },
 };
 
 export function VendorCardList({
@@ -207,11 +211,13 @@ export function VendorCardList({
   };
 
   const categoryOptions: SearchOption[] = [
-    { value: "CARRIER_SEA", label: "Pelayaran Laut (Carrier Sea)", badge: "SEA", badgeColor: "blue", category: "Vendor Transportasi" },
-    { value: "CARRIER_AIR", label: "Maskapai Udara (Carrier Air)", badge: "AIR", badgeColor: "violet", category: "Vendor Transportasi" },
-    { value: "HAULAGE_TRUCK", label: "Armada Truk (Haulage Trucking)", badge: "TRUCK", badgeColor: "amber", category: "Vendor Transportasi" },
+    { value: "CARRIER_SEA", label: "Pelayaran Laut (Carrier Sea / Shipping Line)", badge: "SEA", badgeColor: "blue", category: "Carrier Utama" },
+    { value: "CARRIER_AIR", label: "Maskapai Kargo Udara (Carrier Air / Airline)", badge: "AIR", badgeColor: "violet", category: "Carrier Utama" },
+    { value: "HAULAGE_TRUCK", label: "Armada Truk Darat (Haulage / Inland Trucking)", badge: "TRUCK", badgeColor: "amber", category: "Transporter Darat" },
+    { value: "CFS_WAREHOUSE", label: "CFS & Pergudangan (Warehouse & Depo)", badge: "CFS", badgeColor: "violet", category: "Fasilitas Logistik" },
+    { value: "PORT_TERMINAL", label: "Terminal & Pelabuhan (Port Operator / Lo-Lo)", badge: "PORT", badgeColor: "blue", category: "Fasilitas Logistik" },
     { value: "CUSTOMS_BROKER", label: "PPJK & Kepabeanan (Customs Broker)", badge: "PPJK", badgeColor: "emerald", category: "Jasa Kepabeanan" },
-    { value: "OTHERS", label: "Vendor Pendukung Lainnya", badge: "OTHERS", badgeColor: "slate", category: "Lainnya" },
+    { value: "OTHERS", label: "Penyedia Jasa Pendukung Lainnya", badge: "OTHERS", badgeColor: "slate", category: "Lainnya" },
   ];
 
   const provinceOptions: SearchOption[] = useMemo(
@@ -502,6 +508,51 @@ export function VendorCardList({
           >
             <ShieldCheck className="h-3.5 w-3.5" />
             <span>PPJK / Bea Cukai</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedCategory("CFS_WAREHOUSE");
+              setCurrentPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all ${
+              selectedCategory === "CFS_WAREHOUSE"
+                ? "bg-violet-600 text-white shadow-sm"
+                : "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 hover:bg-violet-100"
+            }`}
+          >
+            <Box className="h-3.5 w-3.5" />
+            <span>CFS &amp; Gudang</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedCategory("PORT_TERMINAL");
+              setCurrentPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all ${
+              selectedCategory === "PORT_TERMINAL"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100"
+            }`}
+          >
+            <Anchor className="h-3.5 w-3.5" />
+            <span>Terminal Pelabuhan</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedCategory("OTHERS");
+              setCurrentPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all ${
+              selectedCategory === "OTHERS"
+                ? "bg-slate-700 text-white shadow-sm"
+                : "bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+            }`}
+          >
+            <Layers className="h-3.5 w-3.5" />
+            <span>Lainnya</span>
           </button>
         </div>
 

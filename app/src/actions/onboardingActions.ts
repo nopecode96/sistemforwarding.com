@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { SubscriptionStatus, UserRole, PrefixType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { createSessionToken, setSessionCookie } from "@/lib/auth";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { createBorderPayQris } from "@/lib/borderpay";
 
 const RESERVED_SUBDOMAINS = new Set([
@@ -34,7 +34,8 @@ export interface SubdomainCheckResult {
 export interface RegisterTenantInput {
   companyName: string;
   subdomain: string;
-  plan: "trial" | "monthly" | "yearly";
+  plan: "trial" | "monthly" | "yearly" | "pay_per_job";
+  referralCode?: string;
   user: {
     name: string;
     email: string;
@@ -140,12 +141,43 @@ export async function registerNewTenant(
     }
 
     const isPaidPlan = plan === "monthly" || plan === "yearly";
-    const planPrice = plan === "yearly" ? 10000000 : plan === "monthly" ? 1000000 : 0;
+    let planPrice = plan === "yearly" ? 10000000 : plan === "monthly" ? 1000000 : 0;
+    try {
+      const dbPlan = await prisma.platformPlan.findFirst({
+        where: { code: plan.toUpperCase(), isActive: true },
+      });
+      if (dbPlan) {
+        planPrice = Number(dbPlan.price) || 0;
+      }
+    } catch {
+      // safe fallback to default
+    }
 
-    // Trial lasts 7 days; Paid starts in TRIAL until QRIS payment confirmed
+    // Trial lasts 7 days; Paid starts in TRIAL until QRIS payment confirmed; Pay-Per-Job is ACTIVE immediately (billed monthly)
+    const isPayPerJob = plan === "pay_per_job";
     const trialDays = plan === "trial" ? 7 : 1;
-    const trialEndsAt = new Date();
-    trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
+    const trialEndsAt = isPayPerJob ? null : new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
+
+    // Resolve affiliate referral if available
+    const cookieStore = await cookies();
+    const rawRefCode = input.referralCode?.trim() || cookieStore.get("sf_affiliate_ref")?.value?.trim();
+    let referredByAffiliateId: string | null = null;
+
+    if (rawRefCode) {
+      try {
+        const affiliate = await prisma.affiliate.findFirst({
+          where: {
+            code: { equals: rawRefCode, mode: "insensitive" },
+            status: "APPROVED",
+          },
+        });
+        if (affiliate) {
+          referredByAffiliateId = affiliate.id;
+        }
+      } catch (err) {
+        console.warn("[Onboarding] Error looking up affiliate code:", err);
+      }
+    }
 
     // 2. Atomic Database Provisioning
     const { newTenant, createdUser } = await prisma.$transaction(async (tx) => {
@@ -154,11 +186,12 @@ export async function registerNewTenant(
         data: {
           subdomain,
           companyName: companyName.trim(),
-          subscriptionStatus: SubscriptionStatus.TRIAL,
-          subscriptionTier: plan.toUpperCase(),
+          subscriptionStatus: isPayPerJob ? SubscriptionStatus.ACTIVE : SubscriptionStatus.TRIAL,
+          subscriptionTier: isPayPerJob ? "PAY_PER_JOB" : plan.toUpperCase(),
           trialEndsAt,
-          billingCycle: plan === "yearly" ? "YEARLY" : "MONTHLY",
+          billingCycle: plan === "yearly" ? "YEARLY" : isPayPerJob ? "PAY_PER_JOB" : "MONTHLY",
           isActive: true,
+          referredByAffiliateId,
         },
       });
 
